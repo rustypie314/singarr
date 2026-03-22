@@ -152,16 +152,27 @@ router.post('/test-email', requireAdmin, async (req, res) => {
 
 // Send test email
 router.post('/test-email/send', requireAdmin, async (req, res) => {
-  const { sendEmail } = require('../services/email');
+  const { getEmailConfig, createTransport } = require('../services/email');
   const { to } = req.body;
   if (!to) return res.status(400).json({ error: 'Recipient email required' });
-  const ok = await sendEmail({
-    to,
-    subject: 'Singarr — Test email',
-    html: `<div style="font-family:sans-serif;padding:20px;background:#0a0a0b;color:#f0f0f2;border-radius:12px;">
-      <h2 style="color:#2dbe6c;">✓ Email is working!</h2>
-      <p>Your Singarr email notifications are configured correctly.</p>
-    </div>`,
-  });
-  res.json({ ok, error: ok ? null : 'Email failed — check your SMTP settings' });
+
+  const config = getEmailConfig();
+  if (!config.host) return res.status(400).json({ ok: false, error: 'SMTP host not configured' });
+
+  try {
+    const transport = createTransport(config);
+    await transport.sendMail({
+      from: `"${config.fromName || 'Singarr'}" <${config.from || config.user}>`,
+      to,
+      subject: 'Singarr — Test email',
+      html: `<div style="font-family:sans-serif;padding:20px;background:#0a0a0b;color:#f0f0f2;border-radius:12px;">
+        <h2 style="color:#2dbe6c;">✓ Email is working!</h2>
+        <p>Your Singarr email notifications are configured correctly.</p>
+      </div>`,
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[Email] Test send failed:', e.message);
+    res.json({ ok: false, error: e.message });
+  }
 });

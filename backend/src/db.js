@@ -96,11 +96,12 @@ function initSchema() {
     CREATE TABLE IF NOT EXISTS issue_notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       issue_id INTEGER NOT NULL,
-      user_id INTEGER NOT NULL,
+      user_id INTEGER,
+      note_type TEXT DEFAULT 'user',
       body TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     );
 
     CREATE INDEX IF NOT EXISTS idx_requests_user ON requests(user_id);
@@ -194,13 +195,17 @@ function runMigrations() {
       CREATE TABLE issue_notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         issue_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
+        user_id INTEGER,
+        note_type TEXT DEFAULT 'user',
         body TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
       )
     `);
+  } else {
+    const noteCols = db.pragma('table_info(issue_notes)').map(c => c.name);
+    if (!noteCols.includes('note_type')) db.exec("ALTER TABLE issue_notes ADD COLUMN note_type TEXT DEFAULT 'user'");
   }
 }
 

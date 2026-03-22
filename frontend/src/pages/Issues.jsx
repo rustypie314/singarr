@@ -399,7 +399,20 @@ function IssueCard({ issue, index, isAdmin, onUpdateStatus, onDelete, api }) {
                 ) : (
                   <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
                     {notes.map(note => {
+                      const isSystem = note.note_type === 'system'
                       const isNoteAdmin = !!(note.is_admin || note.is_local_admin)
+
+                      // System activity entry — centered pill style
+                      if (isSystem) return (
+                        <div key={note.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'4px 0' }}>
+                          <div style={{ flex:1, height:1, background:'var(--border)' }} />
+                          <span style={{ fontSize:11, color:'var(--text-muted)', whiteSpace:'nowrap' }}>
+                            {note.body} · {formatTime(note.created_at)}
+                          </span>
+                          <div style={{ flex:1, height:1, background:'var(--border)' }} />
+                        </div>
+                      )
+
                       return (
                         <div key={note.id} style={{ display:'flex', gap:10 }}>
                           {/* Avatar */}
@@ -467,13 +480,21 @@ function IssueCard({ issue, index, isAdmin, onUpdateStatus, onDelete, api }) {
                 )}
               </div>
 
-              {/* Delete */}
-              <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                <button onClick={() => onDelete(issue.id)}
-                  style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'none', border:'1px solid rgba(239,68,68,0.3)', borderRadius:7, color:'#ef4444', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font-sans)' }}>
-                  <IconTrash size={13} color="currentColor" />
-                  {isAdmin ? 'Delete' : 'Remove'}
-                </button>
+              {/* Admin delete / Owner close if opened in error */}
+              <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
+                {isOwner && !isAdmin && issue.status === 'open' && (
+                  <button onClick={() => onUpdateStatus(issue.id, 'resolved')}
+                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'none', border:'1px solid rgba(255,255,255,0.15)', borderRadius:7, color:'var(--text-secondary)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font-sans)' }}>
+                    Close issue
+                  </button>
+                )}
+                {isAdmin && (
+                  <button onClick={() => onDelete(issue.id)}
+                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'none', border:'1px solid rgba(239,68,68,0.3)', borderRadius:7, color:'#ef4444', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font-sans)' }}>
+                    <IconTrash size={13} color="currentColor" />
+                    Delete
+                  </button>
+                )}
               </div>
 
             </div>

@@ -230,6 +230,7 @@ module.exports = {
   sendEmail,
   testEmailConfig,
   getEmailConfig,
+  createTransport,
   notifyRequestFulfilled,
   notifyRequestApproved,
   notifyRequestRejected,

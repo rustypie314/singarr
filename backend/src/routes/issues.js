@@ -105,6 +105,14 @@ router.put('/:id', requireAdmin, (req, res) => {
     }
   }
 
+  // Post system activity entry for status changes
+  if (status && status !== prevStatus) {
+    const statusLabels = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved' };
+    const body = `Status changed to ${statusLabels[status] || status} by ${req.user.username}`;
+    db.prepare('INSERT INTO issue_notes (issue_id, user_id, note_type, body) VALUES (?, ?, ?, ?)')
+      .run(req.params.id, req.user.id, 'system', body);
+  }
+
   res.json({ success: true });
 });
 

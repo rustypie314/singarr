@@ -843,7 +843,7 @@ function NotificationsTab({ api, settings, setSettings, saveSettings, saving }) 
             <div style={styles.toggleLabel}>Use SSL/TLS</div>
             <div style={styles.toggleDesc}>Enable for port 465. Leave off for 587 (STARTTLS)</div>
           </div>
-          <Toggle value={settings.email_secure === 'true'} onChange={v => setSettings(s => ({ ...s, email_secure: String(v) }))} />
+          <Toggle value={settings.email_secure === 'true'} onChange={v => setSettings(s => ({ ...s, email_secure: String(v), email_port: v ? '465' : '587' }))} />
         </div>
 
         {/* Test connection */}
