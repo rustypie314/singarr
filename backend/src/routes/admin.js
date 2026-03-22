@@ -172,7 +172,8 @@ router.post('/test-email/send', requireAdmin, async (req, res) => {
 
   try {
     const transport = createTransport(config);
-    await transport.sendMail({
+    console.log('[Email] Attempting send to:', to, 'via', config.host, config.port, 'secure:', config.secure, 'user:', config.user, 'from:', config.from || config.user);
+    const info = await transport.sendMail({
       from: `"${config.fromName}" <${config.from || config.user}>`,
       to,
       subject: 'Singarr — Test email',
@@ -181,6 +182,7 @@ router.post('/test-email/send', requireAdmin, async (req, res) => {
         <p>Your Singarr email notifications are configured correctly.</p>
       </div>`,
     });
+    console.log('[Email] Send result:', info.messageId, info.response);
     res.json({ ok: true });
   } catch (e) {
     console.error('[Email] Test send failed:', e.message);
