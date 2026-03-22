@@ -1,0 +1,166 @@
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '../contexts/AuthContext.jsx'
+import toast from 'react-hot-toast'
+
+export default function RequestModal({ item, type, onClose, onSuccess }) {
+  const { api } = useAuth()
+  const [loading, setLoading] = useState(false)
+
+  if (!item) return null
+
+  async function handleRequest() {
+    setLoading(true)
+    try {
+      await api.post('/requests', {
+        type,
+        musicbrainzId: item.id,
+        title: type === 'artist' ? item.name : item.title,
+        artistName: item.artistName || null,
+        coverUrl: item.coverUrl || item.thumbUrl || null,
+      })
+      toast.success('Request submitted!')
+      onSuccess?.()
+      onClose()
+    } catch (e) {
+      const msg = e.response?.data?.error || 'Request failed'
+      if (e.response?.data?.inPlex) {
+        toast('Already in your Plex library!', { icon: '📚' })
+      } else {
+        toast.error(msg)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const title = type === 'artist' ? item.name : item.title
+  const art = item.coverUrl || item.thumbUrl
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        style={styles.overlay}
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.92, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+          style={styles.modal}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Art header */}
+          {art && (
+            <div style={{ ...styles.artBg, backgroundImage: `url(${art})` }}>
+              <div style={styles.artOverlay} />
+            </div>
+          )}
+
+          <div style={styles.body}>
+            <div style={styles.typeTag}>{type}</div>
+            <h2 style={styles.title}>{title}</h2>
+            {item.artistName && type !== 'artist' && (
+              <p style={styles.artist}>{item.artistName}</p>
+            )}
+            {item.year && <p style={styles.meta}>{item.year}</p>}
+            {item.disambiguation && (
+              <p style={styles.meta}>{item.disambiguation}</p>
+            )}
+
+            <p style={styles.confirmText}>
+              Send this {type} to Lidarr for acquisition?
+            </p>
+
+            <div style={styles.actions}>
+              <button onClick={onClose} style={styles.cancelBtn}>Cancel</button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleRequest}
+                disabled={loading}
+                style={{ ...styles.confirmBtn, opacity: loading ? 0.7 : 1 }}
+              >
+                {loading ? 'Requesting…' : 'Request'}
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  )
+}
+
+const styles = {
+  overlay: {
+    position: 'fixed', inset: 0,
+    background: 'rgba(0,0,0,0.7)',
+    backdropFilter: 'blur(4px)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    zIndex: 1000, padding: '20px',
+  },
+  modal: {
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-xl)',
+    width: '100%', maxWidth: '420px',
+    overflow: 'hidden',
+    boxShadow: '0 32px 64px rgba(0,0,0,0.4)',
+  },
+  artBg: {
+    height: '160px',
+    backgroundSize: 'cover', backgroundPosition: 'center',
+    position: 'relative',
+  },
+  artOverlay: {
+    position: 'absolute', inset: 0,
+    background: 'linear-gradient(to bottom, transparent 40%, var(--bg-elevated))',
+  },
+  body: { padding: '24px' },
+  typeTag: {
+    display: 'inline-block',
+    padding: '3px 10px',
+    background: 'var(--accent-muted)',
+    color: 'var(--accent)',
+    borderRadius: '999px',
+    fontSize: '11px', fontWeight: '700',
+    textTransform: 'uppercase', letterSpacing: '0.06em',
+    marginBottom: '8px',
+  },
+  title: {
+    fontSize: '22px', fontWeight: '800',
+    color: 'var(--text-primary)', lineHeight: 1.2,
+    marginBottom: '4px',
+  },
+  artist: { fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '2px' },
+  meta: { fontSize: '12px', color: 'var(--text-muted)', marginBottom: '2px' },
+  confirmText: {
+    fontSize: '14px', color: 'var(--text-secondary)',
+    marginTop: '16px', marginBottom: '20px',
+  },
+  actions: { display: 'flex', gap: '10px' },
+  cancelBtn: {
+    flex: 1, padding: '11px',
+    background: 'var(--bg-overlay)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-md)',
+    color: 'var(--text-secondary)',
+    fontSize: '14px', fontWeight: '600',
+    fontFamily: 'var(--font-sans)', cursor: 'pointer',
+    transition: 'var(--transition)',
+  },
+  confirmBtn: {
+    flex: 1, padding: '11px',
+    background: 'var(--accent)',
+    border: 'none',
+    borderRadius: 'var(--radius-md)',
+    color: '#fff',
+    fontSize: '14px', fontWeight: '700',
+    fontFamily: 'var(--font-sans)', cursor: 'pointer',
+    transition: 'var(--transition)',
+  },
+}

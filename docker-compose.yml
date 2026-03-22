@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  singarr:
+    build: .
+    container_name: singarr
+    restart: unless-stopped
+    ports:
+      - "8684:8684"
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-changeme_please_set_a_real_secret}
+      - PLEX_CLIENT_ID=singarr
+      - APP_URL=${APP_URL:-}
+    volumes:
+      - singarr-data:/app/data
+
+volumes:
+  singarr-data:

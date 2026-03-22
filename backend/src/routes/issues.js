@@ -1,0 +1,96 @@
+const express = require('express');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { getDb } = require('../db');
+
+const router = express.Router();
+
+const ISSUE_TYPES = {
+  missing_tracks: 'Missing Tracks',
+  poor_quality:   'Poor Audio Quality',
+  other:          'Other',
+};
+
+// Get issues (users see own, admin sees all)
+router.get('/', requireAuth, (req, res) => {
+  const db = getDb();
+  let issues;
+  if (req.user.is_admin) {
+    issues = db.prepare(`
+      SELECT i.*, u.username, u.avatar,
+        r.title as request_title, r.cover_url as request_cover
+      FROM issues i
+      JOIN users u ON i.user_id = u.id
+      LEFT JOIN requests r ON i.request_id = r.id
+      ORDER BY i.created_at DESC
+    `).all();
+  } else {
+    issues = db.prepare(`
+      SELECT i.*, u.username, u.avatar,
+        r.title as request_title, r.cover_url as request_cover
+      FROM issues i
+      JOIN users u ON i.user_id = u.id
+      LEFT JOIN requests r ON i.request_id = r.id
+      WHERE i.user_id = ?
+      ORDER BY i.created_at DESC
+    `).all(req.user.id);
+  }
+  res.json({ issues });
+});
+
+// Get issue counts (for badge)
+router.get('/counts', requireAuth, (req, res) => {
+  const db = getDb();
+  const open = req.user.is_admin
+    ? db.prepare("SELECT COUNT(*) as c FROM issues WHERE status = 'open'").get().c
+    : db.prepare("SELECT COUNT(*) as c FROM issues WHERE status = 'open' AND user_id = ?").get(req.user.id).c;
+  res.json({ open });
+});
+
+// Create issue
+router.post('/', requireAuth, (req, res) => {
+  const { type, title, description, requestId } = req.body;
+  if (!type || !title) return res.status(400).json({ error: 'type and title are required' });
+  if (!ISSUE_TYPES[type]) return res.status(400).json({ error: 'Invalid issue type' });
+
+  const db = getDb();
+  const result = db.prepare(`
+    INSERT INTO issues (user_id, request_id, type, title, description)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(req.user.id, requestId || null, type, title.trim(), description?.trim() || null);
+
+  const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(result.lastInsertRowid);
+  res.status(201).json({ issue });
+});
+
+// Update issue (admin only — change status, add note)
+router.put('/:id', requireAdmin, (req, res) => {
+  const db = getDb();
+  const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Issue not found' });
+
+  const { status, adminNote } = req.body;
+  const validStatuses = ['open', 'in_progress', 'resolved'];
+  if (status && !validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+
+  db.prepare(`
+    UPDATE issues SET
+      status = COALESCE(?, status),
+      admin_note = COALESCE(?, admin_note),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(status || null, adminNote ?? null, req.params.id);
+
+  res.json({ success: true });
+});
+
+// Delete issue (own issues or admin)
+router.delete('/:id', requireAuth, (req, res) => {
+  const db = getDb();
+  const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Issue not found' });
+  if (!req.user.is_admin && issue.user_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+  db.prepare('DELETE FROM issues WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+module.exports = router;
