@@ -146,7 +146,6 @@ router.get('/albums', requireAuth, async (req, res) => {
   if (!q) return res.status(400).json({ error: 'Query required' });
 
   // MusicBrainz requires type filtering in the lucene query string
-  // Multiple types use OR syntax: (ep OR single)
   const typeMap = {
     'album':       'primarytype:Album AND NOT secondarytype:*',
     'ep|single':   '(primarytype:EP OR primarytype:Single)',
@@ -156,15 +155,26 @@ router.get('/albums', requireAuth, async (req, res) => {
   const typeFilter = typeMap[type] || `primarytype:${type}`;
   const fullQuery = `${q} AND ${typeFilter}`;
 
+  // Post-fetch filters to strictly enforce type (MusicBrainz scoring is fuzzy)
+  const strictFilter = (rg) => {
+    const primary = (rg['primary-type'] || '').toLowerCase();
+    const secondary = (rg['secondary-types'] || []).map(s => s.toLowerCase());
+    if (type === 'album')       return primary === 'album' && !secondary.includes('compilation') && !secondary.includes('live');
+    if (type === 'ep|single')   return primary === 'ep' || primary === 'single';
+    if (type === 'compilation') return secondary.includes('compilation');
+    if (type === 'live')        return secondary.includes('live');
+    return true;
+  };
+
   try {
     const mbRes = await axios.get(`${MB_BASE}/release-group`, {
-      params: { query: fullQuery, limit: 12, fmt: 'json' },
+      params: { query: fullQuery, limit: 25, fmt: 'json' },
       headers: MB_HEADERS,
       timeout: 8000,
     });
 
     const db = getDb();
-    const releaseGroups = mbRes.data['release-groups'] || [];
+    const releaseGroups = (mbRes.data['release-groups'] || []).filter(strictFilter).slice(0, 12);
     const coverResults = await Promise.all(
       releaseGroups.map(album => getCoverArt(album.id).catch(() => null))
     );
