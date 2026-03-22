@@ -441,49 +441,6 @@ function IssueCard({ issue, index, isAdmin, onUpdateStatus, onDelete, api }) {
   )
 }
 
-  return (
-    <motion.div
-      initial={{ opacity:0, x:-10 }} animate={{ opacity:1, x:0 }}
-      transition={{ delay: index * 0.04 }}
-      style={s.card}
-    >
-      <div style={s.cardRow} onClick={() => setExpanded(e => !e)}>
-        {/* Left */}
-        <div style={{ fontSize:22, flexShrink:0 }}>{typeCfg.emoji}</div>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:14, fontWeight:600, color:'var(--text-primary)' }}>{issue.title}</div>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4, flexWrap:'wrap' }}>
-            <span style={{ fontSize:11, color:'var(--accent)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.04em' }}>{typeCfg.label}</span>
-            {isAdmin && issue.username && <span style={{ fontSize:11, color:'var(--text-muted)' }}>by {issue.username}</span>}
-            <span style={{ fontSize:11, color:'var(--text-muted)' }}>{new Date(issue.created_at).toLocaleDateString()}</span>
-            {issue.request_title && <span style={{ fontSize:11, color:'var(--text-muted)' }}>· {issue.request_title}</span>}
-          </div>
-        </div>
-
-        {/* Right */}
-        <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-          <IssueStatusPill status={issue.status} />
-          <span style={{ fontSize:12, color:'var(--text-muted)', transition:'transform 200ms', display:'inline-block', transform: expanded ? 'rotate(180deg)' : 'none' }}>▾</span>
-        </div>
-      </div>
-
-      {/* Expanded details */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }} transition={{ duration:0.2 }}
-            style={{ borderTop:'1px solid var(--border)', overflow:'hidden' }}>
-            <div style={{ padding:'14px 16px', display:'flex', flexDirection:'column', gap:12 }}>
-              {issue.description && (
-                <div>
-                  <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Description</div>
-                  <div style={{ fontSize:13, color:'var(--text-secondary)', lineHeight:1.6 }}>{issue.description}</div>
-                </div>
-              )}
-
-
-
-
-
 const s = {
   root: { maxWidth:860, margin:'0 auto' },
   header: { display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20, gap:12, flexWrap:'wrap' },
