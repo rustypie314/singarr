@@ -145,9 +145,20 @@ router.get('/albums', requireAuth, async (req, res) => {
   const { q, type = 'album' } = req.query;
   if (!q) return res.status(400).json({ error: 'Query required' });
 
+  // MusicBrainz requires type filtering in the lucene query string
+  // Multiple types use OR syntax: (ep OR single)
+  const typeMap = {
+    'album':       'primarytype:Album AND NOT secondarytype:*',
+    'ep|single':   '(primarytype:EP OR primarytype:Single)',
+    'compilation': 'secondarytype:Compilation',
+    'live':        'secondarytype:Live',
+  };
+  const typeFilter = typeMap[type] || `primarytype:${type}`;
+  const fullQuery = `${q} AND ${typeFilter}`;
+
   try {
     const mbRes = await axios.get(`${MB_BASE}/release-group`, {
-      params: { query: q, limit: 12, fmt: 'json', type },
+      params: { query: fullQuery, limit: 12, fmt: 'json' },
       headers: MB_HEADERS,
       timeout: 8000,
     });
