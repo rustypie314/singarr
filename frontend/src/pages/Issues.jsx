@@ -100,11 +100,7 @@ export default function Issues() {
   }
 
   async function addAdminNote(id, note) {
-    try {
-      await api.put(`/issues/${id}`, { adminNote: note })
-      toast.success('Note saved')
-      fetchIssues()
-    } catch { toast.error('Failed to save note') }
+    // kept for compat — notes now handled inside IssueCard via thread
   }
 
   const filtered = filter === 'all' ? issues : issues.filter(i => i.status === filter)
@@ -166,7 +162,7 @@ export default function Issues() {
               isAdmin={user?.isAdmin}
               onUpdateStatus={updateStatus}
               onDelete={deleteIssue}
-              onAddNote={addAdminNote}
+              api={api}
             />
           ))}
         </div>
@@ -245,15 +241,205 @@ export default function Issues() {
   )
 }
 
-function IssueCard({ issue, index, isAdmin, onUpdateStatus, onDelete, onAddNote }) {
+function IssueCard({ issue, index, isAdmin, onUpdateStatus, onDelete, api }) {
+  const { user } = useAuth()
   const [expanded, setExpanded] = useState(false)
-  const [note, setNote] = useState(issue.admin_note || '')
+  const [notes, setNotes] = useState(null)
+  const [newNote, setNewNote] = useState('')
+  const [posting, setPosting] = useState(false)
   const typeCfg = ISSUE_TYPES.find(t => t.value === issue.type) || ISSUE_TYPES[2]
+  const isLocked = issue.status === 'resolved'
+  const isOwner = user?.id === issue.user_id
 
-  // Sync note when issue data updates from server
-  useEffect(() => {
-    setNote(issue.admin_note || '')
-  }, [issue.admin_note])
+  async function loadNotes() {
+    try {
+      const r = await api.get(`/issues/${issue.id}/notes`)
+      setNotes(r.data.notes || [])
+    } catch { setNotes([]) }
+  }
+
+  function handleExpand() {
+    setExpanded(e => !e)
+    if (!expanded && notes === null) loadNotes()
+  }
+
+  async function postNote(e) {
+    e.preventDefault()
+    if (!newNote.trim()) return
+    setPosting(true)
+    try {
+      const r = await api.post(`/issues/${issue.id}/notes`, { body: newNote.trim() })
+      setNotes(prev => [...(prev || []), r.data.note])
+      setNewNote('')
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to post note')
+    } finally { setPosting(false) }
+  }
+
+  function formatTime(dt) {
+    const d = new Date(dt)
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · ' +
+      d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity:0, x:-10 }} animate={{ opacity:1, x:0 }}
+      transition={{ delay: index * 0.04 }}
+      style={s.card}
+    >
+      {/* Header row */}
+      <div style={s.cardRow} onClick={handleExpand}>
+        <div style={{ fontSize:22, flexShrink:0 }}>{typeCfg.emoji}</div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <span style={{ fontSize:14, fontWeight:600, color:'var(--text-primary)' }}>{issue.title}</span>
+            {isLocked && <span title="Thread locked" style={{ fontSize:13 }}>🔒</span>}
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4, flexWrap:'wrap' }}>
+            <span style={{ fontSize:11, color:'var(--accent)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.04em' }}>{typeCfg.label}</span>
+            {isAdmin && issue.username && <span style={{ fontSize:11, color:'var(--text-muted)' }}>by {issue.username}</span>}
+            <span style={{ fontSize:11, color:'var(--text-muted)' }}>{new Date(issue.created_at).toLocaleDateString()}</span>
+            {issue.request_title && <span style={{ fontSize:11, color:'var(--text-muted)' }}>· {issue.request_title}</span>}
+          </div>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+          <IssueStatusPill status={issue.status} />
+          <span style={{ fontSize:12, color:'var(--text-muted)', transition:'transform 200ms', display:'inline-block', transform: expanded ? 'rotate(180deg)' : 'none' }}>▾</span>
+        </div>
+      </div>
+
+      {/* Expanded */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }} transition={{ duration:0.2 }}
+            style={{ borderTop:'1px solid var(--border)', overflow:'hidden' }}>
+            <div style={{ padding:'14px 16px', display:'flex', flexDirection:'column', gap:14 }}>
+
+              {/* Description */}
+              {issue.description && (
+                <div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Description</div>
+                  <div style={{ fontSize:13, color:'var(--text-secondary)', lineHeight:1.6 }}>{issue.description}</div>
+                </div>
+              )}
+
+              {/* Status buttons — admin only */}
+              {isAdmin && (
+                <div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8 }}>Status</div>
+                  <div style={{ display:'flex', gap:6 }}>
+                    {['open','in_progress','resolved'].map(st => (
+                      <button key={st} onClick={() => onUpdateStatus(issue.id, st)}
+                        style={{ padding:'5px 12px', borderRadius:999, border:'1px solid', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'var(--font-sans)',
+                          background: issue.status === st ? STATUS_CONFIG[st].bg : 'transparent',
+                          color: STATUS_CONFIG[st].color,
+                          borderColor: issue.status === st ? STATUS_CONFIG[st].color : 'var(--border)',
+                        }}>
+                        {st === 'in_progress' ? 'In Progress' : st.charAt(0).toUpperCase() + st.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Notes thread */}
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:10 }}>
+                  Notes {notes !== null && notes.length > 0 && `(${notes.length})`}
+                </div>
+
+                {notes === null ? (
+                  <div style={{ fontSize:13, color:'var(--text-muted)', padding:'8px 0' }}>Loading…</div>
+                ) : notes.length === 0 ? (
+                  <div style={{ fontSize:13, color:'var(--text-muted)', padding:'4px 0' }}>No notes yet. Be the first to add one.</div>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
+                    {notes.map(note => {
+                      const isNoteAdmin = note.is_admin || note.is_local_admin
+                      return (
+                        <div key={note.id} style={{ display:'flex', gap:10 }}>
+                          {/* Avatar */}
+                          <div style={{
+                            width:28, height:28, borderRadius:'50%', flexShrink:0, marginTop:2,
+                            background: isNoteAdmin ? '#1a7a45' : 'var(--bg-overlay)',
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                            fontSize:11, fontWeight:700,
+                            color: isNoteAdmin ? '#fff' : 'var(--text-secondary)',
+                          }}>
+                            {note.username?.[0]?.toUpperCase()}
+                          </div>
+                          {/* Bubble */}
+                          <div style={{
+                            flex:1,
+                            background: isNoteAdmin ? 'rgba(26,122,69,0.07)' : 'rgba(255,255,255,0.03)',
+                            border: `1px solid ${isNoteAdmin ? 'rgba(26,122,69,0.2)' : 'rgba(255,255,255,0.07)'}`,
+                            borderLeft: `3px solid ${isNoteAdmin ? '#1a7a45' : 'rgba(255,255,255,0.15)'}`,
+                            borderRadius:'0 8px 8px 0',
+                            padding:'9px 12px',
+                          }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:5 }}>
+                              <span style={{ fontSize:12, fontWeight:700, color: isNoteAdmin ? '#2dbe6c' : 'var(--text-primary)' }}>{note.username}</span>
+                              {isNoteAdmin && <span style={{ fontSize:10, padding:'1px 6px', borderRadius:999, background:'rgba(26,122,69,0.2)', color:'#2dbe6c', fontWeight:700 }}>Admin</span>}
+                              <span style={{ fontSize:11, color:'var(--text-muted)', marginLeft:'auto' }}>{formatTime(note.created_at)}</span>
+                            </div>
+                            <div style={{ fontSize:13, color:'var(--text-secondary)', lineHeight:1.55 }}>{note.body}</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Reply box or locked message */}
+                {isLocked ? (
+                  <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', background:'rgba(255,255,255,0.03)', border:'1px solid var(--border)', borderRadius:8, fontSize:13, color:'var(--text-muted)' }}>
+                    <span>🔒</span> This issue is resolved and the thread is locked.
+                  </div>
+                ) : (isAdmin || isOwner) && (
+                  <form onSubmit={postNote} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
+                    <div style={{
+                      width:28, height:28, borderRadius:'50%', flexShrink:0, marginTop:2,
+                      background: isAdmin ? '#1a7a45' : 'var(--bg-overlay)',
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:11, fontWeight:700,
+                      color: isAdmin ? '#fff' : 'var(--text-secondary)',
+                    }}>
+                      {user?.username?.[0]?.toUpperCase()}
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <textarea
+                        value={newNote} onChange={e => setNewNote(e.target.value)}
+                        placeholder="Add a note…"
+                        style={{ width:'100%', padding:'9px 12px', background:'var(--bg-overlay)', border:'1px solid var(--border-strong)', borderRadius:8, color:'var(--text-primary)', fontSize:13, fontFamily:'var(--font-sans)', resize:'none', minHeight:64, boxSizing:'border-box', outline:'none' }}
+                      />
+                      <div style={{ display:'flex', justifyContent:'flex-end', marginTop:6 }}>
+                        <button type="submit" disabled={posting || !newNote.trim()}
+                          style={{ padding:'7px 16px', background:'var(--accent)', border:'none', borderRadius:7, color:'#fff', fontSize:12, fontWeight:700, cursor: posting || !newNote.trim() ? 'default' : 'pointer', fontFamily:'var(--font-sans)', opacity: posting || !newNote.trim() ? 0.5 : 1 }}>
+                          {posting ? 'Posting…' : 'Post'}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                )}
+              </div>
+
+              {/* Delete */}
+              <div style={{ display:'flex', justifyContent:'flex-end' }}>
+                <button onClick={() => onDelete(issue.id)}
+                  style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'none', border:'1px solid rgba(239,68,68,0.3)', borderRadius:7, color:'#ef4444', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font-sans)' }}>
+                  <IconTrash size={13} color="currentColor" />
+                  {isAdmin ? 'Delete' : 'Remove'}
+                </button>
+              </div>
+
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
 
   return (
     <motion.div
@@ -294,62 +480,9 @@ function IssueCard({ issue, index, isAdmin, onUpdateStatus, onDelete, onAddNote 
                 </div>
               )}
 
-              {issue.admin_note && !isAdmin && (
-                <div style={{ padding:'10px 14px', background:'rgba(26,122,69,0.08)', border:'1px solid rgba(26,122,69,0.2)', borderRadius:8 }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'var(--accent)', marginBottom:4 }}>Admin note</div>
-                  <div style={{ fontSize:13, color:'var(--text-secondary)' }}>{issue.admin_note}</div>
-                </div>
-              )}
 
-              {/* Admin controls */}
-              {isAdmin && (
-                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                  <div>
-                    <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Status</div>
-                    <div style={{ display:'flex', gap:6 }}>
-                      {['open','in_progress','resolved'].map(st => (
-                        <button key={st} onClick={() => onUpdateStatus(issue.id, st)}
-                          style={{ padding:'5px 12px', borderRadius:999, border:'1px solid', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'var(--font-sans)',
-                            background: issue.status === st ? STATUS_CONFIG[st].bg : 'transparent',
-                            color: STATUS_CONFIG[st].color,
-                            borderColor: issue.status === st ? STATUS_CONFIG[st].color : 'var(--border)',
-                          }}>
-                          {st === 'in_progress' ? 'In Progress' : st.charAt(0).toUpperCase() + st.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
 
-                  <div>
-                    <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Admin note</div>
-                    <div style={{ display:'flex', gap:8 }}>
-                      <input value={note} onChange={e => setNote(e.target.value)}
-                        placeholder="Add a note for the user…"
-                        style={{ flex:1, padding:'8px 12px', background:'var(--bg-overlay)', border:'1px solid var(--border-strong)', borderRadius:7, color:'var(--text-primary)', fontSize:13, fontFamily:'var(--font-sans)', outline:'none' }} />
-                      <button onClick={() => onAddNote(issue.id, note)}
-                        style={{ padding:'8px 14px', background:'var(--accent-muted)', border:'1px solid var(--accent)', borderRadius:7, color:'var(--accent)', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'var(--font-sans)' }}>
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Delete */}
-              <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                <button onClick={() => onDelete(issue.id)}
-                  style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'none', border:'1px solid rgba(239,68,68,0.3)', borderRadius:7, color:'#ef4444', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font-sans)' }}>
-                  <IconTrash size={13} color="currentColor" />
-                  {isAdmin ? 'Delete' : 'Remove'}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  )
-}
 
 const s = {
   root: { maxWidth:860, margin:'0 auto' },

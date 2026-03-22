@@ -108,6 +108,70 @@ router.put('/:id', requireAdmin, (req, res) => {
   res.json({ success: true });
 });
 
+// Get notes for an issue
+router.get('/:id/notes', requireAuth, (req, res) => {
+  const db = getDb();
+  const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Issue not found' });
+  // Only admin or issue owner can see notes
+  if (!req.user.is_admin && issue.user_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  const notes = db.prepare(`
+    SELECT n.*, u.username, u.avatar, u.is_admin, u.is_local_admin
+    FROM issue_notes n
+    JOIN users u ON n.user_id = u.id
+    WHERE n.issue_id = ?
+    ORDER BY n.created_at ASC
+  `).all(req.params.id);
+  res.json({ notes });
+});
+
+// Post a note on an issue
+router.post('/:id/notes', requireAuth, async (req, res) => {
+  const db = getDb();
+  const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Issue not found' });
+  // Only admin or issue owner can post
+  if (!req.user.is_admin && issue.user_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+  // Locked if resolved
+  if (issue.status === 'resolved') return res.status(403).json({ error: 'Issue is resolved and locked' });
+
+  const { body } = req.body;
+  if (!body?.trim()) return res.status(400).json({ error: 'Note body is required' });
+
+  const result = db.prepare(
+    'INSERT INTO issue_notes (issue_id, user_id, body) VALUES (?, ?, ?)'
+  ).run(req.params.id, req.user.id, body.trim());
+
+  const note = db.prepare(`
+    SELECT n.*, u.username, u.avatar, u.is_admin, u.is_local_admin
+    FROM issue_notes n JOIN users u ON n.user_id = u.id
+    WHERE n.id = ?
+  `).get(result.lastInsertRowid);
+
+  // Email notification
+  const appUrl = db.prepare("SELECT value FROM settings WHERE key = 'app_url'").get()?.value || '';
+  if (req.user.is_admin) {
+    // Admin posted — email the issue reporter
+    const reporter = db.prepare('SELECT email FROM users WHERE id = ?').get(issue.user_id);
+    if (reporter?.email) notifyIssueNoteAdded({ ...issue, admin_note: body.trim() }, reporter.email, appUrl).catch(() => {});
+  } else {
+    // User posted — email the admin
+    const admin = db.prepare('SELECT email FROM users WHERE is_local_admin = 1 OR is_admin = 1 ORDER BY is_local_admin DESC LIMIT 1').get();
+    if (admin?.email) {
+      const { sendEmail } = require('../services/email');
+      const { getEmailConfig } = require('../services/email');
+      // Simple admin alert
+      notifyAdminNewIssue(
+        { ...issue, title: `Reply on: ${issue.title}`, description: body.trim(), type: 'other' },
+        req.user.username, admin.email, appUrl
+      ).catch(() => {});
+    }
+  }
+
+  res.status(201).json({ note });
+});
+
 // Delete issue (own issues or admin)
 router.delete('/:id', requireAuth, (req, res) => {
   const db = getDb();

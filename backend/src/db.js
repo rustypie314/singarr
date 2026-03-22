@@ -93,6 +93,16 @@ function initSchema() {
       fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS issue_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      issue_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      body TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_requests_user ON requests(user_id);
     CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status);
     CREATE INDEX IF NOT EXISTS idx_plex_cache_mbid ON plex_library_cache(musicbrainz_id);
@@ -176,6 +186,22 @@ function runMigrations() {
   // Per-type limit defaults for existing installs
   insertSetting.run('global_album_limit', '10');
   insertSetting.run('global_track_limit', '20');
+
+  // issue_notes table for existing installs
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);
+  if (!tables.includes('issue_notes')) {
+    db.exec(`
+      CREATE TABLE issue_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        issue_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        body TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+  }
 }
 
 module.exports = { getDb };
