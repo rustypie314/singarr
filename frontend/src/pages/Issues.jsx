@@ -35,6 +35,7 @@ export default function Issues() {
   const [showForm, setShowForm]   = useState(false)
   const [requests, setRequests]   = useState([])
   const [filter, setFilter]       = useState('all')
+  const [confirmDelete, setConfirmDelete] = useState(null) // { id, title }
 
   // Form state
   const [formType, setFormType]   = useState('missing_tracks')
@@ -90,8 +91,13 @@ export default function Issues() {
     } catch { toast.error('Failed to update issue') }
   }
 
-  async function deleteIssue(id) {
-    if (!confirm('Remove this issue?')) return
+  async function deleteIssue(id, title) {
+    setConfirmDelete({ id, title })
+  }
+
+  async function confirmDeleteIssue() {
+    const { id } = confirmDelete
+    setConfirmDelete(null)
     try {
       await api.delete(`/issues/${id}`)
       setIssues(i => i.filter(x => x.id !== id))
@@ -161,7 +167,7 @@ export default function Issues() {
               index={i}
               isAdmin={user?.isAdmin}
               onUpdateStatus={updateStatus}
-              onDelete={deleteIssue}
+              onDelete={(id) => deleteIssue(id, issue.title)}
               api={api}
             />
           ))}
@@ -237,6 +243,35 @@ export default function Issues() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Confirm delete modal */}
+      {confirmDelete && (
+        <div style={s.overlay} onClick={() => setConfirmDelete(null)}>
+          <motion.div
+            initial={{ opacity:0, scale:0.93, y:16 }}
+            animate={{ opacity:1, scale:1, y:0 }}
+            exit={{ opacity:0, scale:0.96 }}
+            transition={{ type:'spring', stiffness:320, damping:28 }}
+            style={{ ...s.modal, maxWidth:400 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize:17, fontWeight:700, color:'var(--text-primary)', marginBottom:8 }}>Delete issue?</h2>
+            <p style={{ fontSize:14, color:'var(--text-secondary)', lineHeight:1.6, marginBottom:20 }}>
+              <strong style={{ color:'var(--text-primary)' }}>{confirmDelete.title}</strong> will be permanently deleted. This cannot be undone.
+            </p>
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={() => setConfirmDelete(null)}
+                style={{ flex:1, padding:11, background:'var(--bg-overlay)', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', color:'var(--text-secondary)', fontSize:14, fontWeight:600, fontFamily:'var(--font-sans)', cursor:'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={confirmDeleteIssue}
+                style={{ flex:1, padding:11, background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.4)', borderRadius:'var(--radius-md)', color:'#ef4444', fontSize:14, fontWeight:700, fontFamily:'var(--font-sans)', cursor:'pointer' }}>
+                Delete
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }
@@ -330,8 +365,8 @@ function IssueCard({ issue, index, isAdmin, onUpdateStatus, onDelete, api }) {
                   <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8 }}>Status</div>
                   <div style={{ display:'flex', gap:6 }}>
                     {['open','in_progress','resolved'].map(st => {
-                      const hasProgressed = issue.status === 'in_progress' || issue.status === 'resolved'
-                      const isDisabled = st === 'open' && hasProgressed
+                      const isDisabled = (st === 'open' && (issue.status === 'in_progress' || issue.status === 'resolved'))
+                                      || (st === 'in_progress' && issue.status === 'resolved')
                       return (
                         <button key={st}
                           onClick={() => !isDisabled && onUpdateStatus(issue.id, st)}
