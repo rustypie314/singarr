@@ -884,6 +884,7 @@ function NotificationsTab({ api, settings, setSettings, saveSettings, saving }) 
             { key: 'notify_request_approved',    label: 'Request approved',        desc: 'Email user when admin approves their request' },
             { key: 'notify_request_rejected',    label: 'Request rejected',        desc: 'Email user when their request is declined' },
             { key: 'notify_new_request_admin',   label: 'New request (admin)',     desc: 'Email admin when a user submits a new request' },
+            { key: 'notify_new_issue_admin',     label: 'New issue (admin)',       desc: 'Email admin when a user reports an issue' },
           ].map(({ key, label, desc }) => (
             <div key={key} style={styles.toggleRow}>
               <div>

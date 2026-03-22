@@ -102,6 +102,7 @@ export default function Issues() {
   async function addAdminNote(id, note) {
     try {
       await api.put(`/issues/${id}`, { adminNote: note })
+      toast.success('Note saved')
       fetchIssues()
     } catch { toast.error('Failed to save note') }
   }
@@ -248,6 +249,11 @@ function IssueCard({ issue, index, isAdmin, onUpdateStatus, onDelete, onAddNote 
   const [expanded, setExpanded] = useState(false)
   const [note, setNote] = useState(issue.admin_note || '')
   const typeCfg = ISSUE_TYPES.find(t => t.value === issue.type) || ISSUE_TYPES[2]
+
+  // Sync note when issue data updates from server
+  useEffect(() => {
+    setNote(issue.admin_note || '')
+  }, [issue.admin_note])
 
   return (
     <motion.div

@@ -166,6 +166,66 @@ async function notifyAdminNewRequest(request, requesterName, adminEmail, appUrl 
   return sendEmail({ to: adminEmail, subject, html });
 }
 
+// New issue (admin alert)
+async function notifyAdminNewIssue(issue, reporterName, adminEmail, appUrl = '') {
+  if (getSetting('notify_new_issue_admin') !== 'true') return;
+  if (!adminEmail) return;
+  const typeLabels = { missing_tracks: 'Missing Tracks', poor_quality: 'Poor Audio Quality', other: 'Other' };
+  const typeLabel = typeLabels[issue.type] || issue.type;
+  const subject = `New issue reported: "${issue.title}" by ${reporterName}`;
+  const html = baseTemplate(`
+    <h2 style="margin:0 0 8px;font-size:20px;color:#f0f0f2;">New issue reported</h2>
+    <p style="color:#9898a8;margin:0 0 20px;"><strong style="color:#f0f0f2;">${reporterName}</strong> has reported an issue.</p>
+    <div style="background:#222228;border-radius:10px;padding:16px;">
+      <div style="font-size:11px;font-weight:700;color:#e8a30f;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">${typeLabel}</div>
+      <div style="font-size:16px;font-weight:700;color:#f0f0f2;">${issue.title}</div>
+      ${issue.description ? `<div style="font-size:13px;color:#9898a8;margin-top:8px;line-height:1.6;">${issue.description}</div>` : ''}
+    </div>
+    ${appUrl ? btn('View Issues', appUrl + '/issues') : ''}
+  `);
+  return sendEmail({ to: adminEmail, subject, html });
+}
+
+// Issue status updated (user notification)
+async function notifyIssueStatusChanged(issue, userEmail, appUrl = '') {
+  if (!userEmail) return;
+  const statusLabels = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved' };
+  const statusColors = { open: '#e8a30f', in_progress: '#4f9cf9', resolved: '#2dbe6c' };
+  const statusLabel = statusLabels[issue.status] || issue.status;
+  const color = statusColors[issue.status] || '#9898a8';
+  const subject = `Issue update: "${issue.title}" is now ${statusLabel}`;
+  const html = baseTemplate(`
+    <h2 style="margin:0 0 8px;font-size:20px;color:${color};">Issue status updated</h2>
+    <p style="color:#9898a8;margin:0 0 20px;">Your issue status has been changed.</p>
+    <div style="background:#222228;border-radius:10px;padding:16px;">
+      <div style="font-size:16px;font-weight:700;color:#f0f0f2;">${issue.title}</div>
+      <div style="margin-top:10px;display:inline-block;padding:4px 12px;border-radius:999px;background:${statusColors[issue.status] ? statusColors[issue.status] + '22' : '#222'};color:${color};font-size:12px;font-weight:700;">${statusLabel}</div>
+      ${issue.admin_note ? `<div style="margin-top:12px;padding:10px 14px;background:rgba(26,122,69,0.08);border:1px solid rgba(26,122,69,0.2);border-radius:8px;"><div style="font-size:11px;font-weight:700;color:#2dbe6c;margin-bottom:4px;">Admin note</div><div style="font-size:13px;color:#9898a8;">${issue.admin_note}</div></div>` : ''}
+    </div>
+    ${appUrl ? btn('View Issue', appUrl + '/issues') : ''}
+  `);
+  return sendEmail({ to: userEmail, subject, html });
+}
+
+// Admin note added (user notification)
+async function notifyIssueNoteAdded(issue, userEmail, appUrl = '') {
+  if (!userEmail || !issue.admin_note) return;
+  const subject = `Admin replied to your issue: "${issue.title}"`;
+  const html = baseTemplate(`
+    <h2 style="margin:0 0 8px;font-size:20px;color:#2dbe6c;">Admin replied to your issue</h2>
+    <p style="color:#9898a8;margin:0 0 20px;">An admin has added a note to your issue.</p>
+    <div style="background:#222228;border-radius:10px;padding:16px;">
+      <div style="font-size:16px;font-weight:700;color:#f0f0f2;margin-bottom:12px;">${issue.title}</div>
+      <div style="padding:10px 14px;background:rgba(26,122,69,0.08);border:1px solid rgba(26,122,69,0.2);border-radius:8px;">
+        <div style="font-size:11px;font-weight:700;color:#2dbe6c;margin-bottom:4px;">Admin note</div>
+        <div style="font-size:13px;color:#9898a8;line-height:1.6;">${issue.admin_note}</div>
+      </div>
+    </div>
+    ${appUrl ? btn('View Issue', appUrl + '/issues') : ''}
+  `);
+  return sendEmail({ to: userEmail, subject, html });
+}
+
 module.exports = {
   sendEmail,
   testEmailConfig,
@@ -174,4 +234,7 @@ module.exports = {
   notifyRequestApproved,
   notifyRequestRejected,
   notifyAdminNewRequest,
+  notifyAdminNewIssue,
+  notifyIssueStatusChanged,
+  notifyIssueNoteAdded,
 };

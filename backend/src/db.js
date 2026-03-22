@@ -122,7 +122,8 @@ function initSchema() {
       ('notify_request_fulfilled', 'true'),
       ('notify_request_approved', 'true'),
       ('notify_request_rejected', 'true'),
-      ('notify_new_request_admin', 'true');
+      ('notify_new_request_admin', 'true'),
+      ('notify_new_issue_admin', 'true');
   `);
 }
 
@@ -167,6 +168,7 @@ function runMigrations() {
     ['email_from', ''], ['email_from_name', 'Singarr'],
     ['notify_request_fulfilled', 'true'], ['notify_request_approved', 'true'],
     ['notify_request_rejected', 'true'], ['notify_new_request_admin', 'true'],
+    ['notify_new_issue_admin', 'true'],
   ];
   const insertSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
   emailSettings.forEach(([k, v]) => insertSetting.run(k, v));

@@ -1,6 +1,7 @@
 const express = require('express');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { getDb } = require('../db');
+const { notifyAdminNewIssue, notifyIssueStatusChanged, notifyIssueNoteAdded } = require('../services/email');
 
 const router = express.Router();
 
@@ -59,6 +60,14 @@ router.post('/', requireAuth, (req, res) => {
   `).run(req.user.id, requestId || null, type, title.trim(), description?.trim() || null);
 
   const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(result.lastInsertRowid);
+
+  // Notify admin
+  const admin = db.prepare('SELECT email FROM users WHERE is_local_admin = 1 OR is_admin = 1 ORDER BY is_local_admin DESC LIMIT 1').get();
+  const appUrl = db.prepare("SELECT value FROM settings WHERE key = 'app_url'").get()?.value || '';
+  if (admin?.email) {
+    notifyAdminNewIssue(issue, req.user.username, admin.email, appUrl).catch(() => {});
+  }
+
   res.status(201).json({ issue });
 });
 
@@ -72,6 +81,9 @@ router.put('/:id', requireAdmin, (req, res) => {
   const validStatuses = ['open', 'in_progress', 'resolved'];
   if (status && !validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
 
+  const prevStatus = issue.status;
+  const prevNote = issue.admin_note;
+
   db.prepare(`
     UPDATE issues SET
       status = COALESCE(?, status),
@@ -79,6 +91,19 @@ router.put('/:id', requireAdmin, (req, res) => {
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `).run(status || null, adminNote ?? null, req.params.id);
+
+  // Send email to issue reporter
+  const updatedIssue = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
+  const reporter = db.prepare('SELECT email FROM users WHERE id = ?').get(issue.user_id);
+  const appUrl = db.prepare("SELECT value FROM settings WHERE key = 'app_url'").get()?.value || '';
+
+  if (reporter?.email) {
+    if (status && status !== prevStatus) {
+      notifyIssueStatusChanged(updatedIssue, reporter.email, appUrl).catch(() => {});
+    } else if (adminNote !== undefined && adminNote !== prevNote) {
+      notifyIssueNoteAdded(updatedIssue, reporter.email, appUrl).catch(() => {});
+    }
+  }
 
   res.json({ success: true });
 });
