@@ -188,8 +188,8 @@ function runMigrations() {
   insertSetting.run('global_track_limit', '20');
 
   // issue_notes table for existing installs
-  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);
-  if (!tables.includes('issue_notes')) {
+  const tables2 = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);
+  if (!tables2.includes('issue_notes')) {
     db.exec(`
       CREATE TABLE issue_notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
