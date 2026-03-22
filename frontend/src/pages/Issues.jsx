@@ -329,16 +329,24 @@ function IssueCard({ issue, index, isAdmin, onUpdateStatus, onDelete, api }) {
                 <div>
                   <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8 }}>Status</div>
                   <div style={{ display:'flex', gap:6 }}>
-                    {['open','in_progress','resolved'].map(st => (
-                      <button key={st} onClick={() => onUpdateStatus(issue.id, st)}
-                        style={{ padding:'5px 12px', borderRadius:999, border:'1px solid', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'var(--font-sans)',
-                          background: issue.status === st ? STATUS_CONFIG[st].bg : 'transparent',
-                          color: STATUS_CONFIG[st].color,
-                          borderColor: issue.status === st ? STATUS_CONFIG[st].color : 'var(--border)',
-                        }}>
-                        {st === 'in_progress' ? 'In Progress' : st.charAt(0).toUpperCase() + st.slice(1)}
-                      </button>
-                    ))}
+                    {['open','in_progress','resolved'].map(st => {
+                      const hasProgressed = issue.status === 'in_progress' || issue.status === 'resolved'
+                      const isDisabled = st === 'open' && hasProgressed
+                      return (
+                        <button key={st}
+                          onClick={() => !isDisabled && onUpdateStatus(issue.id, st)}
+                          disabled={isDisabled}
+                          style={{ padding:'5px 12px', borderRadius:999, border:'1px solid', fontSize:11, fontWeight:700,
+                            cursor: isDisabled ? 'not-allowed' : 'pointer', fontFamily:'var(--font-sans)',
+                            background: issue.status === st ? STATUS_CONFIG[st].bg : 'transparent',
+                            color: isDisabled ? 'var(--text-muted)' : STATUS_CONFIG[st].color,
+                            borderColor: isDisabled ? 'var(--border)' : issue.status === st ? STATUS_CONFIG[st].color : 'var(--border)',
+                            opacity: isDisabled ? 0.4 : 1,
+                          }}>
+                          {st === 'in_progress' ? 'In Progress' : st.charAt(0).toUpperCase() + st.slice(1)}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               )}
@@ -356,7 +364,7 @@ function IssueCard({ issue, index, isAdmin, onUpdateStatus, onDelete, api }) {
                 ) : (
                   <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
                     {notes.map(note => {
-                      const isNoteAdmin = note.is_admin || note.is_local_admin
+                      const isNoteAdmin = !!(note.is_admin || note.is_local_admin)
                       return (
                         <div key={note.id} style={{ display:'flex', gap:10 }}>
                           {/* Avatar */}
