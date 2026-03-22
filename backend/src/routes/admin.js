@@ -153,16 +153,27 @@ router.post('/test-email', requireAdmin, async (req, res) => {
 // Send test email
 router.post('/test-email/send', requireAdmin, async (req, res) => {
   const { getEmailConfig, createTransport } = require('../services/email');
-  const { to } = req.body;
+  const { to, host, port, secure, user, pass, from, fromName } = req.body;
   if (!to) return res.status(400).json({ error: 'Recipient email required' });
 
-  const config = getEmailConfig();
+  // Use posted values if provided, fall back to saved config
+  const saved = getEmailConfig();
+  const config = {
+    host:     host     || saved.host,
+    port:     parseInt(port || saved.port || 587),
+    secure:   secure !== undefined ? (secure === 'true' || secure === true) : saved.secure,
+    user:     user     || saved.user,
+    pass:     pass     || saved.pass,
+    from:     from     || saved.from,
+    fromName: fromName || saved.fromName || 'Singarr',
+  };
+
   if (!config.host) return res.status(400).json({ ok: false, error: 'SMTP host not configured' });
 
   try {
     const transport = createTransport(config);
     await transport.sendMail({
-      from: `"${config.fromName || 'Singarr'}" <${config.from || config.user}>`,
+      from: `"${config.fromName}" <${config.from || config.user}>`,
       to,
       subject: 'Singarr — Test email',
       html: `<div style="font-family:sans-serif;padding:20px;background:#0a0a0b;color:#f0f0f2;border-radius:12px;">

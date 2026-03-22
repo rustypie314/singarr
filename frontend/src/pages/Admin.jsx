@@ -778,7 +778,16 @@ function NotificationsTab({ api, settings, setSettings, saveSettings, saving }) 
     if (!testEmail) return
     setSending(true)
     try {
-      const { data } = await api.post('/admin/test-email/send', { to: testEmail })
+      const { data } = await api.post('/admin/test-email/send', {
+        to: testEmail,
+        host: settings.email_host,
+        port: settings.email_port,
+        secure: settings.email_secure,
+        user: settings.email_user,
+        pass: settings.email_pass,
+        from: settings.email_from,
+        fromName: settings.email_from_name,
+      })
       if (data.ok) { toast.success('Test email sent!') }
       else { toast.error(data.error || 'Failed to send') }
     } catch { toast.error('Failed to send test email') }
