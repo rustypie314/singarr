@@ -111,7 +111,6 @@ function LibraryCard({ item, type }) {
 function RequestCard({ req, onRequest }) {
   const [imgLoaded, setImgLoaded] = useState(false)
   const [imgError, setImgError]   = useState(false)
-  const canRequest = !['downloaded'].includes(req.status)
 
   return (
     <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.15 }} style={r.card}>
@@ -125,13 +124,11 @@ function RequestCard({ req, onRequest }) {
               <TypeIcon type={req.type} size={32} color="rgba(255,255,255,0.2)" />
             </div>
         }
-        <div style={{ position: 'absolute', bottom: 6, left: 6 }}>
-          <StatusBadge status={req.status} size="sm" />
-        </div>
       </div>
       <div style={r.cardTitle}>{req.title}</div>
-      <div style={r.cardSub}>
-        {req.artist_name || req.username}
+      <div style={r.cardSub}>{req.artist_name || req.username}</div>
+      <div style={{ marginTop: 4 }}>
+        <StatusBadge status={req.status} size="sm" />
       </div>
     </motion.div>
   )

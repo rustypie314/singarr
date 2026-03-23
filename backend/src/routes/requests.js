@@ -58,6 +58,8 @@ router.post('/', requireAuth, async (req, res) => {
 
   if (!type || !title) return res.status(400).json({ error: 'type and title are required' });
   if (!['artist', 'album', 'track'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
+  if (title.length > 500) return res.status(400).json({ error: 'Title too long' });
+  if (artistName && artistName.length > 500) return res.status(400).json({ error: 'Artist name too long' });
 
   // Check if type is allowed
   if (!checkTypeAllowed(type)) {

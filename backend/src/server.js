@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cron = require('node-cron');
 
@@ -16,16 +17,26 @@ const { syncPlexLibrary }    = require('./services/plex');
 const { syncLidarrStatuses } = require('./services/lidarr');
 
 const app = express();
-app.set('trust proxy', 1); // Trust nginx reverse proxy
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 
 // Init DB
 getDb();
 
-// Middleware
+// Security headers
+app.use(helmet({ contentSecurityPolicy: false })); // CSP disabled — frontend served by nginx
+
+// CORS — acceptable for home server, lock down if exposing publicly
 app.use(cors({ origin: '*', credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
+
+// Global rate limit
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }));
+
+// Stricter rate limit on auth endpoints — 20 attempts per 15 min
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+app.use('/api/auth/local', authLimiter);
+app.use('/api/setup', authLimiter);
 
 // Routes
 app.use('/api/setup',    setupRoutes);

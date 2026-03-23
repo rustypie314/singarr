@@ -4,12 +4,15 @@ const { getDb } = require('../db');
 
 const router = express.Router();
 
-// Get all settings
+// Get all settings — mask sensitive values
 router.get('/settings', requireAdmin, (req, res) => {
   const db = getDb();
   const rows = db.prepare('SELECT key, value FROM settings').all();
+  const SENSITIVE = new Set(['email_pass', 'plex_token', 'lidarr_api_key', 'lastfm_api_key', 'fanart_api_key']);
   const settings = {};
-  rows.forEach(r => { settings[r.key] = r.value; });
+  rows.forEach(r => {
+    settings[r.key] = SENSITIVE.has(r.key) && r.value ? '••••••••' : r.value;
+  });
   res.json({ settings });
 });
 
@@ -29,14 +32,15 @@ router.put('/settings', requireAdmin, (req, res) => {
     plex_token:     'PLEX_TOKEN',
   };
 
+  const SENSITIVE = new Set(['email_pass', 'plex_token', 'lidarr_api_key', 'lastfm_api_key', 'fanart_api_key']);
   const update = db.prepare('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)');
   const updateMany = db.transaction((entries) => {
     for (const [key, value] of entries) {
-      if (value !== undefined && value !== null && String(value).trim() !== '') {
-        update.run(key, String(value));
-        // Apply to process.env immediately so services pick it up without restart
-        if (envMap[key]) process.env[envMap[key]] = String(value);
-      }
+      if (value === undefined || value === null || String(value).trim() === '') continue;
+      // Skip masked placeholder — user didn't change this sensitive field
+      if (SENSITIVE.has(key) && String(value) === '••••••••') continue;
+      update.run(key, String(value));
+      if (envMap[key]) process.env[envMap[key]] = String(value);
     }
   });
   updateMany(Object.entries(settings));
@@ -47,7 +51,9 @@ router.put('/settings', requireAdmin, (req, res) => {
 router.get('/users', requireAdmin, (req, res) => {
   const db = getDb();
   const users = db.prepare(`
-    SELECT u.*, 
+    SELECT u.id, u.plex_id, u.username, u.display_name, u.email, u.avatar,
+      u.is_admin, u.is_local_admin, u.is_approved, u.request_limit_override,
+      u.album_limit_override, u.track_limit_override, u.created_at, u.last_login,
       (SELECT COUNT(*) FROM requests r WHERE r.user_id = u.id) as total_requests
     FROM users u ORDER BY u.created_at DESC
   `).all();

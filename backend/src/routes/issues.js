@@ -105,7 +105,7 @@ router.get('/:id/stream', (req, res) => {
   try {
     const payload = jwt.verify(token, JWT_SECRET);
     const db = getDb();
-    user = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.userId);
+    user = db.prepare('SELECT id, is_admin, is_approved, username FROM users WHERE id = ?').get(payload.userId);
     if (!user || !user.is_approved) return res.status(403).end();
   } catch { return res.status(401).end(); }
 
@@ -220,6 +220,7 @@ router.post('/:id/notes', requireAuth, async (req, res) => {
 
   const { body } = req.body;
   if (!body?.trim()) return res.status(400).json({ error: 'Note body is required' });
+  if (body.trim().length > 2000) return res.status(400).json({ error: 'Note too long (max 2000 characters)' });
 
   const result = db.prepare(
     'INSERT INTO issue_notes (issue_id, user_id, body) VALUES (?, ?, ?)'
