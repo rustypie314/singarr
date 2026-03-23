@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useOutletContext } from 'react-router-dom'
@@ -276,8 +276,9 @@ export default function Issues() {
   )
 }
 
-function IssueCard({ issue, index, isAdmin, onUpdateStatus, onDelete, api }) {
+function IssueCard({ issue: initialIssue, index, isAdmin, onUpdateStatus, onDelete, api }) {
   const { user } = useAuth()
+  const [issue, setIssue] = useState(initialIssue)
   const [expanded, setExpanded] = useState(false)
   const [notes, setNotes] = useState(null)
   const [newNote, setNewNote] = useState('')
@@ -285,6 +286,7 @@ function IssueCard({ issue, index, isAdmin, onUpdateStatus, onDelete, api }) {
   const typeCfg = ISSUE_TYPES.find(t => t.value === issue.type) || ISSUE_TYPES[2]
   const isLocked = issue.status === 'resolved'
   const isOwner = user?.id === issue.user_id
+  const sseRef = useRef(null)
 
   async function loadNotes() {
     try {
@@ -292,6 +294,47 @@ function IssueCard({ issue, index, isAdmin, onUpdateStatus, onDelete, api }) {
       setNotes(r.data.notes || [])
     } catch { setNotes([]) }
   }
+
+  // Connect SSE when expanded, disconnect when collapsed
+  useEffect(() => {
+    if (!expanded) {
+      if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
+      return;
+    }
+
+    const token = localStorage.getItem('singarr-token');
+    if (!token) return;
+
+    const es = new EventSource(`/api/issues/${issue.id}/stream?token=${encodeURIComponent(token)}`);
+    sseRef.current = es;
+
+    es.addEventListener('note', (e) => {
+      try {
+        const note = JSON.parse(e.data);
+        setNotes(prev => {
+          if (!prev) return [note];
+          // Avoid duplicates (our own posts are added optimistically)
+          if (prev.some(n => n.id === note.id)) return prev;
+          return [...prev, note];
+        });
+      } catch {}
+    });
+
+    es.addEventListener('status', (e) => {
+      try {
+        const { status } = JSON.parse(e.data);
+        setIssue(prev => ({ ...prev, status }));
+      } catch {}
+    });
+
+    es.onerror = () => {
+      // Connection dropped — reconnect after 3s
+      es.close();
+      sseRef.current = null;
+    };
+
+    return () => { es.close(); sseRef.current = null; };
+  }, [expanded, issue.id]);
 
   function handleExpand() {
     setExpanded(e => !e)

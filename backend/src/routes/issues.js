@@ -1,9 +1,73 @@
 const express = require('express');
-const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { requireAuth, requireAdmin, JWT_SECRET } = require('../middleware/auth');
 const { getDb } = require('../db');
 const { notifyAdminNewIssue, notifyIssueStatusChanged, notifyIssueNoteAdded } = require('../services/email');
+const jwt = require('jsonwebtoken');
 
 const router = express.Router();
+
+// ── SSE client registry ───────────────────────────────────
+// Map of issueId → Set of { res, userId }
+const sseClients = new Map();
+
+function getClients(issueId) {
+  if (!sseClients.has(issueId)) sseClients.set(issueId, new Set());
+  return sseClients.get(issueId);
+}
+
+function pushToIssue(issueId, event, data) {
+  const clients = sseClients.get(issueId);
+  if (!clients) return;
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const client of clients) {
+    try { client.res.write(payload); } catch {}
+  }
+}
+
+// SSE stream endpoint — token passed as query param since EventSource can't set headers
+router.get('/:id/stream', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(401).end();
+
+  let user;
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    const db = getDb();
+    user = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.userId);
+    if (!user || !user.is_approved) return res.status(403).end();
+  } catch { return res.status(401).end(); }
+
+  const issueId = req.params.id;
+  const issue = getDb().prepare('SELECT * FROM issues WHERE id = ?').get(issueId);
+  if (!issue) return res.status(404).end();
+  if (!user.is_admin && issue.user_id !== user.id) return res.status(403).end();
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  // Send a heartbeat immediately so the connection registers
+  res.write(': connected\n\n');
+
+  const client = { res, userId: user.id };
+  getClients(issueId).add(client);
+
+  // Heartbeat every 25s to keep connection alive through proxies
+  const heartbeat = setInterval(() => {
+    try { res.write(': heartbeat\n\n'); } catch { cleanup(); }
+  }, 25000);
+
+  function cleanup() {
+    clearInterval(heartbeat);
+    getClients(issueId).delete(client);
+    if (getClients(issueId).size === 0) sseClients.delete(issueId);
+  }
+
+  req.on('close', cleanup);
+  req.on('error', cleanup);
+});
 
 const ISSUE_TYPES = {
   missing_tracks: 'Missing Tracks',
@@ -109,8 +173,12 @@ router.put('/:id', requireAdmin, (req, res) => {
   if (status && status !== prevStatus) {
     const statusLabels = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved' };
     const body = `Status changed to ${statusLabels[status] || status} by ${req.user.username}`;
-    db.prepare('INSERT INTO issue_notes (issue_id, user_id, note_type, body) VALUES (?, ?, ?, ?)')
+    const result = db.prepare('INSERT INTO issue_notes (issue_id, user_id, note_type, body) VALUES (?, ?, ?, ?)')
       .run(req.params.id, req.user.id, 'system', body);
+    const systemNote = db.prepare('SELECT n.*, u.username FROM issue_notes n JOIN users u ON n.user_id = u.id WHERE n.id = ?').get(result.lastInsertRowid);
+    pushToIssue(req.params.id, 'note', systemNote);
+    // Also push the updated issue so status pill updates live
+    pushToIssue(req.params.id, 'status', { status });
   }
 
   res.json({ success: true });
@@ -178,6 +246,9 @@ router.post('/:id/notes', requireAuth, async (req, res) => {
   }
 
   res.status(201).json({ note });
+
+  // Push to all SSE clients watching this issue
+  pushToIssue(req.params.id, 'note', note);
 });
 
 // Delete issue (own issues or admin)
