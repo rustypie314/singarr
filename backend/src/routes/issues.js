@@ -24,50 +24,6 @@ function pushToIssue(issueId, event, data) {
   }
 }
 
-// SSE stream endpoint — token passed as query param since EventSource can't set headers
-router.get('/:id/stream', (req, res) => {
-  const { token } = req.query;
-  if (!token) return res.status(401).end();
-
-  let user;
-  try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    const db = getDb();
-    user = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.userId);
-    if (!user || !user.is_approved) return res.status(403).end();
-  } catch { return res.status(401).end(); }
-
-  const issueId = req.params.id;
-  const issue = getDb().prepare('SELECT * FROM issues WHERE id = ?').get(issueId);
-  if (!issue) return res.status(404).end();
-  if (!user.is_admin && issue.user_id !== user.id) return res.status(403).end();
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders();
-
-  // Send a heartbeat immediately so the connection registers
-  res.write(': connected\n\n');
-
-  const client = { res, userId: user.id };
-  getClients(issueId).add(client);
-
-  // Heartbeat every 25s to keep connection alive through proxies
-  const heartbeat = setInterval(() => {
-    try { res.write(': heartbeat\n\n'); } catch { cleanup(); }
-  }, 25000);
-
-  function cleanup() {
-    clearInterval(heartbeat);
-    getClients(issueId).delete(client);
-    if (getClients(issueId).size === 0) sseClients.delete(issueId);
-  }
-
-  req.on('close', cleanup);
-  req.on('error', cleanup);
-});
 
 const ISSUE_TYPES = {
   missing_tracks: 'Missing Tracks',
@@ -133,6 +89,51 @@ router.post('/', requireAuth, (req, res) => {
   }
 
   res.status(201).json({ issue });
+});
+
+// SSE stream endpoint — token passed as query param since EventSource can't set headers
+router.get('/:id/stream', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(401).end();
+
+  let user;
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    const db = getDb();
+    user = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.userId);
+    if (!user || !user.is_approved) return res.status(403).end();
+  } catch { return res.status(401).end(); }
+
+  const issueId = req.params.id;
+  const issue = getDb().prepare('SELECT * FROM issues WHERE id = ?').get(issueId);
+  if (!issue) return res.status(404).end();
+  if (!user.is_admin && issue.user_id !== user.id) return res.status(403).end();
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  // Send a heartbeat immediately so the connection registers
+  res.write(': connected\n\n');
+
+  const client = { res, userId: user.id };
+  getClients(issueId).add(client);
+
+  // Heartbeat every 25s to keep connection alive through proxies
+  const heartbeat = setInterval(() => {
+    try { res.write(': heartbeat\n\n'); } catch { cleanup(); }
+  }, 25000);
+
+  function cleanup() {
+    clearInterval(heartbeat);
+    getClients(issueId).delete(client);
+    if (getClients(issueId).size === 0) sseClients.delete(issueId);
+  }
+
+  req.on('close', cleanup);
+  req.on('error', cleanup);
 });
 
 // Update issue (admin only — change status, add note)

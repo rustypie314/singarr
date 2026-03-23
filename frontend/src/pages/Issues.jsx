@@ -410,6 +410,7 @@ function IssueCard({ issue: initialIssue, index, isAdmin, onUpdateStatus, onDele
                     {['open','in_progress','resolved'].map(st => {
                       const isDisabled = (st === 'open' && (issue.status === 'in_progress' || issue.status === 'resolved'))
                                       || (st === 'in_progress' && issue.status === 'resolved')
+                                      || (st === 'resolved' && issue.status === 'resolved')
                       return (
                         <button key={st}
                           onClick={() => !isDisabled && onUpdateStatus(issue.id, st)}
@@ -417,9 +418,9 @@ function IssueCard({ issue: initialIssue, index, isAdmin, onUpdateStatus, onDele
                           style={{ padding:'5px 12px', borderRadius:999, border:'1px solid', fontSize:11, fontWeight:700,
                             cursor: isDisabled ? 'not-allowed' : 'pointer', fontFamily:'var(--font-sans)',
                             background: issue.status === st ? STATUS_CONFIG[st].bg : 'transparent',
-                            color: isDisabled ? 'var(--text-muted)' : STATUS_CONFIG[st].color,
-                            borderColor: isDisabled ? 'var(--border)' : issue.status === st ? STATUS_CONFIG[st].color : 'var(--border)',
-                            opacity: isDisabled ? 0.4 : 1,
+                            color: (isDisabled && st !== issue.status) ? 'var(--text-muted)' : STATUS_CONFIG[st].color,
+                            borderColor: (isDisabled && st !== issue.status) ? 'var(--border)' : issue.status === st ? STATUS_CONFIG[st].color : 'var(--border)',
+                            opacity: (isDisabled && st !== issue.status) ? 0.4 : 1,
                           }}>
                           {st === 'in_progress' ? 'In Progress' : st.charAt(0).toUpperCase() + st.slice(1)}
                         </button>
