@@ -61,8 +61,8 @@ async function syncPlexLibrary() {
       VALUES (?, ?, 'artist', ?, ?)
     `);
     const insertAlbum = db.prepare(`
-      INSERT OR REPLACE INTO plex_library_cache (plex_rating_key, musicbrainz_id, type, title, artist_name, thumb)
-      VALUES (?, ?, 'album', ?, ?, ?)
+      INSERT OR REPLACE INTO plex_library_cache (plex_rating_key, musicbrainz_id, type, title, artist_name, thumb, quality)
+      VALUES (?, ?, 'album', ?, ?, ?, ?)
     `);
 
     function extractMbid(item) {
@@ -74,9 +74,43 @@ async function syncPlexLibrary() {
       return null;
     }
 
+    // Fetch track quality for all albums in parallel (batched to avoid hammering Plex)
+    async function getAlbumQuality(ratingKey) {
+      try {
+        const res = await client.get(`/library/metadata/${ratingKey}/children`, {
+          params: { includeMedia: 1 }
+        });
+        const tracks = res.data?.MediaContainer?.Metadata || [];
+        let maxBitDepth = 0;
+        let hasFlac = false;
+        for (const track of tracks) {
+          const media = track.Media?.[0];
+          if (!media) continue;
+          if (media.audioCodec === 'flac') hasFlac = true;
+          const bitDepth = media.bitDepth || 0;
+          if (bitDepth > maxBitDepth) maxBitDepth = bitDepth;
+        }
+        if (!hasFlac) return null;
+        if (maxBitDepth >= 24) return '24bit-flac';
+        if (maxBitDepth >= 16) return '16bit-flac';
+        return 'flac'; // unknown bit depth but still FLAC
+      } catch { return null; }
+    }
+
+    // Batch quality fetches in groups of 10 to avoid overwhelming Plex
+    const qualities = [];
+    for (let i = 0; i < albums.length; i += 10) {
+      const batch = albums.slice(i, i + 10);
+      const results = await Promise.all(batch.map(a => getAlbumQuality(a.ratingKey)));
+      qualities.push(...results);
+    }
+
     const insertAll = db.transaction(() => {
       for (const a of artists) insertArtist.run(a.ratingKey, extractMbid(a), a.title, a.thumb);
-      for (const a of albums)  insertAlbum.run(a.ratingKey, extractMbid(a), a.title, a.parentTitle, a.thumb);
+      for (let i = 0; i < albums.length; i++) {
+        const a = albums[i];
+        insertAlbum.run(a.ratingKey, extractMbid(a), a.title, a.parentTitle, a.thumb, qualities[i] || null);
+      }
     });
     insertAll();
 
@@ -94,10 +128,12 @@ function isInPlexLibrary(title, artistName, type) {
       `SELECT id FROM plex_library_cache WHERE type = 'artist' AND LOWER(title) = LOWER(?)`
     ).get(title);
   } else if (type === 'album') {
-    return !!db.prepare(
-      `SELECT id FROM plex_library_cache WHERE type = 'album' AND LOWER(title) = LOWER(?)
+    const row = db.prepare(
+      `SELECT id, quality FROM plex_library_cache WHERE type = 'album' AND LOWER(title) = LOWER(?)
        AND (? IS NULL OR LOWER(artist_name) = LOWER(?))`
     ).get(title, artistName, artistName);
+    if (!row) return false;
+    return { inPlex: true, quality: row.quality || null };
   }
   return false;
 }

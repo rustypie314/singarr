@@ -54,7 +54,7 @@ router.get('/', requireAuth, async (req, res) => {
   `).all();
 
   const rawAlbums = db.prepare(`
-    SELECT title, artist_name, plex_rating_key, thumb FROM plex_library_cache
+    SELECT title, artist_name, plex_rating_key, thumb, quality FROM plex_library_cache
     WHERE type = 'album' ORDER BY RANDOM() LIMIT 20
   `).all();
 

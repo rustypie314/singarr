@@ -69,6 +69,16 @@ function LibraryCard({ item, type }) {
   const isArtist = type === 'artist'
   const imgSrc   = item.imageUrl || null
 
+  const qualityLabel = item.quality === '24bit-flac' ? '24-bit FLAC'
+                     : item.quality === '16bit-flac' ? '16-bit FLAC'
+                     : item.quality === 'flac'       ? 'FLAC'
+                     : null
+
+  const badgeText = qualityLabel ? `✓ In Plex · ${qualityLabel}` : '✓ In Plex'
+  const badgeColor = item.quality === '24bit-flac' ? { bg: 'rgba(24,95,165,0.85)', color: '#B5D4F4' }
+                   : item.quality === '16bit-flac' ? { bg: 'rgba(15,110,86,0.85)', color: '#9FE1CB' }
+                   : { bg: 'rgba(26,122,69,0.85)', color: '#fff' }
+
   return (
     <motion.div
       whileHover={{ y: -4 }}
@@ -85,10 +95,14 @@ function LibraryCard({ item, type }) {
               {isArtist ? <IconMicrophone size={32} color="rgba(255,255,255,0.2)" /> : <IconDisc size={32} color="rgba(255,255,255,0.2)" />}
             </div>
         }
-        <div style={r.plexBadge}>✓ In Plex</div>
       </div>
       <div style={r.cardTitle}>{item.title}</div>
       {item.artist_name && <div style={r.cardSub}>{item.artist_name}</div>}
+      <div style={{ marginTop: 4 }}>
+        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: badgeColor.bg, color: badgeColor.color, backdropFilter: 'blur(4px)', display: 'inline-block' }}>
+          {badgeText}
+        </span>
+      </div>
     </motion.div>
   )
 }
@@ -753,7 +767,23 @@ function AlbumRow({ item, index, expanded, tracks, onExpand, onRequestAlbum, onR
           </div>
         </div>
         <div style={styles.rowRight}>
-          {item.inPlex && <span style={styles.plexPill}>In Plex</span>}
+          {item.inPlex && (() => {
+            const ql = item.quality === '24bit-flac' ? '24-bit FLAC'
+                     : item.quality === '16bit-flac' ? '16-bit FLAC'
+                     : item.quality === 'flac'       ? 'FLAC' : null
+            const bg = item.quality === '24bit-flac' ? 'rgba(24,95,165,0.15)'
+                     : item.quality === '16bit-flac' ? 'rgba(15,110,86,0.15)'
+                     : 'rgba(26,122,69,0.15)'
+            const color = item.quality === '24bit-flac' ? '#4f9cf9'
+                        : item.quality === '16bit-flac' ? '#2dbe6c'
+                        : 'var(--accent)'
+            const border = item.quality === '24bit-flac' ? 'rgba(24,95,165,0.3)'
+                         : item.quality === '16bit-flac' ? 'rgba(15,110,86,0.3)'
+                         : 'rgba(26,122,69,0.3)'
+            return <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: bg, color, border: `1px solid ${border}` }}>
+              {ql ? `✓ In Plex · ${ql}` : 'In Plex'}
+            </span>
+          })()}
           {item.requestStatus && <StatusBadge status={item.requestStatus} size="sm" />}
           {!isBlocked && hovered && (
             <motion.button initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }}

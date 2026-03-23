@@ -183,7 +183,9 @@ router.get('/albums', requireAuth, async (req, res) => {
       const artistName = album['artist-credit']?.[0]?.artist?.name
                       || album['artist-credit']?.[0]?.name
                       || '';
-      const inPlex = isInPlexLibrary(album.title, artistName, 'album');
+      const plexInfo = isInPlexLibrary(album.title, artistName, 'album');
+      const inPlex = plexInfo ? plexInfo.inPlex : false;
+      const quality = plexInfo ? plexInfo.quality : null;
       const existingRequest = db.prepare(
         `SELECT status FROM requests WHERE musicbrainz_id = ? AND type = 'album'`
       ).get(album.id);
@@ -197,6 +199,7 @@ router.get('/albums', requireAuth, async (req, res) => {
         coverUrl: coverResults[i] || null,
         releaseType: album['primary-type'] || type,
         inPlex,
+        quality,
         requestStatus: existingRequest?.status || null,
       };
     });
@@ -359,12 +362,16 @@ router.get('/artist/:mbid/albums', requireAuth, async (req, res) => {
       const existingRequest = db.prepare(
         `SELECT status FROM requests WHERE musicbrainz_id = ? AND type = 'album'`
       ).get(g.id);
+      const artistCredit = g['artist-credit']?.[0]?.artist?.name || '';
+      const plexInfo = isInPlexLibrary(g.title, artistCredit, 'album');
       return {
         id: g.id,
         title: g.title,
         year: g['first-release-date']?.substring(0, 4) || null,
         type: g['primary-type'] || 'Album',
         coverUrl: i < 20 ? (covers[i] || null) : null,
+        inPlex: plexInfo ? plexInfo.inPlex : false,
+        quality: plexInfo ? plexInfo.quality : null,
         requestStatus: existingRequest?.status || null,
       };
     });

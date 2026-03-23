@@ -84,6 +84,7 @@ function initSchema() {
       title TEXT NOT NULL,
       artist_name TEXT,
       thumb TEXT,
+      quality TEXT,
       synced_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -188,9 +189,12 @@ function runMigrations() {
   insertSetting.run('global_album_limit', '10');
   insertSetting.run('global_track_limit', '20');
 
+  // quality column for existing plex_library_cache
+  const plexCols = db.pragma('table_info(plex_library_cache)').map(c => c.name);
+  if (!plexCols.includes('quality')) db.exec('ALTER TABLE plex_library_cache ADD COLUMN quality TEXT');
+
   // issue_notes table for existing installs
-  const tables2 = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);
-  if (!tables2.includes('issue_notes')) {
+  const tables2 = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);  if (!tables2.includes('issue_notes')) {
     db.exec(`
       CREATE TABLE issue_notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
