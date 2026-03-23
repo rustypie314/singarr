@@ -236,7 +236,7 @@ export default function Admin() {
           <div style={styles.card}>
             <div style={styles.cardHeader}>
               <h3 style={styles.cardTitle}>Plex Library</h3>
-              <button onClick={syncPlex} disabled={syncing} style={{ ...styles.actionBtn, opacity: syncing ? 0.8 : 1, cursor: syncing ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={syncPlex} disabled={syncing} style={{ ...styles.actionBtn, opacity: syncing ? 0.8 : 1, cursor: syncing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 {syncing
                   ? <><span style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'currentColor', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block', flexShrink: 0 }} /> Syncing…</>
                   : <><IconRefresh size={13} color="currentColor" /> Sync Now</>
