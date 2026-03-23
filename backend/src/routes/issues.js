@@ -34,6 +34,7 @@ const ISSUE_TYPES = {
 // Get issues (users see own, admin sees all)
 router.get('/', requireAuth, (req, res) => {
   const db = getDb();
+  console.log('[Issues] GET / user:', req.user.id, 'is_admin:', req.user.is_admin);
   let issues;
   if (req.user.is_admin) {
     issues = db.prepare(`
@@ -55,6 +56,7 @@ router.get('/', requireAuth, (req, res) => {
       ORDER BY i.created_at DESC
     `).all(req.user.id);
   }
+  console.log('[Issues] returning:', issues.length, 'issues');
   res.json({ issues });
 });
 
