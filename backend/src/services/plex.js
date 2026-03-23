@@ -152,10 +152,12 @@ function isInPlexLibrary(title, artistName, type) {
       `SELECT id FROM plex_library_cache WHERE type = 'artist' AND LOWER(title) = LOWER(?)`
     ).get(title);
   } else if (type === 'album') {
+    console.log('[PlexCheck] Looking for album:', title, '| artist:', artistName);
     const row = db.prepare(
-      `SELECT id, quality FROM plex_library_cache WHERE type = 'album' AND LOWER(title) = LOWER(?)
-       AND (? IS NULL OR LOWER(artist_name) = LOWER(?))`
-    ).get(title, artistName, artistName);
+      `SELECT id, title, artist_name, quality FROM plex_library_cache WHERE type = 'album' AND LOWER(title) = LOWER(?)
+       AND (? IS NULL OR ? = '' OR LOWER(artist_name) = LOWER(?))`
+    ).get(title, artistName, artistName, artistName);
+    console.log('[PlexCheck] Result:', row ? `found: ${row.title} / ${row.artist_name}` : 'not found');
     if (!row) return false;
     return { inPlex: true, quality: row.quality || null };
   }
