@@ -70,7 +70,7 @@ router.get('/artists', requireAuth, async (req, res) => {
 
   try {
     const mbRes = await axios.get(`${MB_BASE}/artist`, {
-      params: { query: q, limit: 12, fmt: 'json' },
+      params: { query: q, limit: 50, fmt: 'json' },
       headers: MB_HEADERS,
       timeout: 8000,
     });
@@ -142,13 +142,13 @@ router.get('/albums', requireAuth, async (req, res) => {
 
   try {
     const mbRes = await axios.get(`${MB_BASE}/release-group`, {
-      params: { query: fullQuery, limit: 25, fmt: 'json' },
+      params: { query: fullQuery, limit: 100, fmt: 'json' },
       headers: MB_HEADERS,
       timeout: 8000,
     });
 
     const db = getDb();
-    const releaseGroups = (mbRes.data['release-groups'] || []).filter(strictFilter).slice(0, 12);
+    const releaseGroups = (mbRes.data['release-groups'] || []).filter(strictFilter).slice(0, 50);
     const coverResults = await Promise.all(
       releaseGroups.map(album => getCoverArt(album.id).catch(() => null))
     );

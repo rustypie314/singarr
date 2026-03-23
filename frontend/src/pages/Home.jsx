@@ -150,6 +150,7 @@ export default function Home() {
   const [comps,   setComps]   = useState([])
   const [live,    setLive]    = useState([])
   const [tracks,  setTracks]  = useState([])
+  const [tabPages, setTabPages] = useState({ albums: 0, eps: 0, comps: 0, live: 0, tracks: 0, artists: 0 })
   const [selected, setSelected]         = useState(null)
   const [selectedType, setSelectedType] = useState(null)
   const [expandedAlbum, setExpandedAlbum] = useState(null)
@@ -201,6 +202,7 @@ export default function Home() {
     setExpandedAlbum(null)
     setExpandedArtist(null)
     setEps([]); setComps([]); setLive([])
+    setTabPages({ albums: 0, eps: 0, comps: 0, live: 0, tracks: 0, artists: 0 })
     setLoading(!!v.trim())
     searchAll(v)
   }
@@ -367,7 +369,7 @@ export default function Home() {
               {(hasResults || loading) && (
                 <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={styles.tabBar}>
                   {TABS.map(t => (
-                    <button key={t.id} onClick={() => setTab(t.id)} style={{
+                    <button key={t.id} onClick={() => { setTab(t.id); setTabPages(prev => ({ ...prev, [t.id]: 0 })) }} style={{
                       ...styles.tabBtn,
                       background: tab === t.id ? 'var(--text-primary)' : 'transparent',
                       color: tab === t.id ? 'var(--bg-base)' : 'var(--text-secondary)',
@@ -431,80 +433,100 @@ export default function Home() {
             {hasResults && tab === 'artists' && (
               artists.length === 0
                 ? <EmptyTab label="artists" />
-                : artists.map((item, i) => (
-                    <ArtistRow key={item.id} item={item} index={i}
-                      expanded={expandedArtist === item.id}
-                      albums={artistAlbums[item.id]}
-                      page={artistAlbumPage[item.id] || 0}
-                      onSetPage={p => setArtistAlbumPage(prev => ({ ...prev, [item.id]: p }))}
-                      onExpand={() => loadArtistAlbums(item.id, item.name)}
-                      onRequestArtist={() => requestItem(item, 'artist')}
-                      onRequestAlbum={(a) => requestItem(a, 'album')} api={api}
-                    />
-                  ))
+                : <>
+                    {artists.slice(tabPages.artists * 10, (tabPages.artists + 1) * 10).map((item, i) => (
+                      <ArtistRow key={item.id} item={item} index={i}
+                        expanded={expandedArtist === item.id}
+                        albums={artistAlbums[item.id]}
+                        page={artistAlbumPage[item.id] || 0}
+                        onSetPage={p => setArtistAlbumPage(prev => ({ ...prev, [item.id]: p }))}
+                        onExpand={() => loadArtistAlbums(item.id, item.name)}
+                        onRequestArtist={() => requestItem(item, 'artist')}
+                        onRequestAlbum={(a) => requestItem(a, 'album')} api={api}
+                      />
+                    ))}
+                    <TabPager total={artists.length} page={tabPages.artists} onPage={p => setTabPages(prev => ({ ...prev, artists: p }))} />
+                  </>
             )}
 
             {/* Albums */}
             {hasResults && tab === 'albums' && (
               albums.length === 0
                 ? <EmptyTab label="albums" />
-                : albums.map((item, i) => (
-                    <AlbumRow key={item.id} item={item} index={i}
-                      expanded={expandedAlbum === item.id} tracks={albumTracks[item.id]}
-                      onExpand={() => loadAlbumTracks(item.id)}
-                      onRequestAlbum={() => requestItem(item, 'album')}
-                      onRequestTrack={(t) => requestItem(t, 'track')}
-                    />
-                  ))
+                : <>
+                    {albums.slice(tabPages.albums * 10, (tabPages.albums + 1) * 10).map((item, i) => (
+                      <AlbumRow key={item.id} item={item} index={i}
+                        expanded={expandedAlbum === item.id} tracks={albumTracks[item.id]}
+                        onExpand={() => loadAlbumTracks(item.id)}
+                        onRequestAlbum={() => requestItem(item, 'album')}
+                        onRequestTrack={(t) => requestItem(t, 'track')}
+                      />
+                    ))}
+                    <TabPager total={albums.length} page={tabPages.albums} onPage={p => setTabPages(prev => ({ ...prev, albums: p }))} />
+                  </>
             )}
 
             {/* Tracks */}
             {hasResults && tab === 'tracks' && (
               tracks.length === 0
                 ? <EmptyTab label="tracks" />
-                : tracks.map((item, i) => <ResultRow key={item.id} item={item} type="track" index={i} onRequest={() => requestItem(item, 'track')} />)
+                : <>
+                    {tracks.slice(tabPages.tracks * 10, (tabPages.tracks + 1) * 10).map((item, i) => (
+                      <ResultRow key={item.id} item={item} type="track" index={i} onRequest={() => requestItem(item, 'track')} />
+                    ))}
+                    <TabPager total={tracks.length} page={tabPages.tracks} onPage={p => setTabPages(prev => ({ ...prev, tracks: p }))} />
+                  </>
             )}
 
             {/* EPs & Singles */}
             {hasResults && tab === 'eps' && (
               eps.length === 0
                 ? <EmptyTab label="EPs & singles" />
-                : eps.map((item, i) => (
-                    <AlbumRow key={item.id} item={item} index={i}
-                      expanded={expandedAlbum === item.id} tracks={albumTracks[item.id]}
-                      onExpand={() => loadAlbumTracks(item.id)}
-                      onRequestAlbum={() => requestItem(item, 'album')}
-                      onRequestTrack={(t) => requestItem(t, 'track')}
-                    />
-                  ))
+                : <>
+                    {eps.slice(tabPages.eps * 10, (tabPages.eps + 1) * 10).map((item, i) => (
+                      <AlbumRow key={item.id} item={item} index={i}
+                        expanded={expandedAlbum === item.id} tracks={albumTracks[item.id]}
+                        onExpand={() => loadAlbumTracks(item.id)}
+                        onRequestAlbum={() => requestItem(item, 'album')}
+                        onRequestTrack={(t) => requestItem(t, 'track')}
+                      />
+                    ))}
+                    <TabPager total={eps.length} page={tabPages.eps} onPage={p => setTabPages(prev => ({ ...prev, eps: p }))} />
+                  </>
             )}
 
             {/* Compilations */}
             {hasResults && tab === 'compilations' && (
               comps.length === 0
                 ? <EmptyTab label="compilations" />
-                : comps.map((item, i) => (
-                    <AlbumRow key={item.id} item={item} index={i}
-                      expanded={expandedAlbum === item.id} tracks={albumTracks[item.id]}
-                      onExpand={() => loadAlbumTracks(item.id)}
-                      onRequestAlbum={() => requestItem(item, 'album')}
-                      onRequestTrack={(t) => requestItem(t, 'track')}
-                    />
-                  ))
+                : <>
+                    {comps.slice(tabPages.comps * 10, (tabPages.comps + 1) * 10).map((item, i) => (
+                      <AlbumRow key={item.id} item={item} index={i}
+                        expanded={expandedAlbum === item.id} tracks={albumTracks[item.id]}
+                        onExpand={() => loadAlbumTracks(item.id)}
+                        onRequestAlbum={() => requestItem(item, 'album')}
+                        onRequestTrack={(t) => requestItem(t, 'track')}
+                      />
+                    ))}
+                    <TabPager total={comps.length} page={tabPages.comps} onPage={p => setTabPages(prev => ({ ...prev, comps: p }))} />
+                  </>
             )}
 
             {/* Live */}
             {hasResults && tab === 'live' && (
               live.length === 0
                 ? <EmptyTab label="live albums" />
-                : live.map((item, i) => (
-                    <AlbumRow key={item.id} item={item} index={i}
-                      expanded={expandedAlbum === item.id} tracks={albumTracks[item.id]}
-                      onExpand={() => loadAlbumTracks(item.id)}
-                      onRequestAlbum={() => requestItem(item, 'album')}
-                      onRequestTrack={(t) => requestItem(t, 'track')}
-                    />
-                  ))
+                : <>
+                    {live.slice(tabPages.live * 10, (tabPages.live + 1) * 10).map((item, i) => (
+                      <AlbumRow key={item.id} item={item} index={i}
+                        expanded={expandedAlbum === item.id} tracks={albumTracks[item.id]}
+                        onExpand={() => loadAlbumTracks(item.id)}
+                        onRequestAlbum={() => requestItem(item, 'album')}
+                        onRequestTrack={(t) => requestItem(t, 'track')}
+                      />
+                    ))}
+                    <TabPager total={live.length} page={tabPages.live} onPage={p => setTabPages(prev => ({ ...prev, live: p }))} />
+                  </>
             )}
           </motion.div>
         )}
@@ -856,6 +878,30 @@ function TrackRow({ track, index, onRequest }) {
           </motion.button>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+/* ── Tab pagination controls ─────────────────────────────── */
+function TabPager({ total, page, onPage }) {
+  const PAGE_SIZE = 10
+  if (total <= PAGE_SIZE) return null
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 4px', marginTop: 4, borderTop: '1px solid var(--border)' }}>
+      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+        {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total}
+      </span>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button onClick={() => onPage(page - 1)} disabled={page === 0}
+          style={{ padding: '5px 14px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, color: page === 0 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: page === 0 ? 'default' : 'pointer', fontSize: 13, opacity: page === 0 ? 0.4 : 1, fontFamily: 'var(--font-sans)' }}>
+          ‹ Prev
+        </button>
+        <button onClick={() => onPage(page + 1)} disabled={page >= totalPages - 1}
+          style={{ padding: '5px 14px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, color: page >= totalPages - 1 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: page >= totalPages - 1 ? 'default' : 'pointer', fontSize: 13, opacity: page >= totalPages - 1 ? 0.4 : 1, fontFamily: 'var(--font-sans)' }}>
+          Next ›
+        </button>
+      </div>
     </div>
   )
 }
