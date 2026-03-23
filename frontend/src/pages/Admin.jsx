@@ -15,6 +15,7 @@ export default function Admin() {
   const [users, setUsers] = useState([])
   const [requests, setRequests] = useState([])
   const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   // Plex user import
   const [plexModalOpen, setPlexModalOpen] = useState(false)
@@ -172,12 +173,15 @@ export default function Admin() {
   }
 
   async function syncPlex() {
+    setSyncing(true)
     try {
       await api.post('/plex/sync')
       toast.success('Plex library synced!')
       fetchStats()
     } catch (e) {
       toast.error(e.response?.data?.error || 'Sync failed')
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -232,8 +236,11 @@ export default function Admin() {
           <div style={styles.card}>
             <div style={styles.cardHeader}>
               <h3 style={styles.cardTitle}>Plex Library</h3>
-              <button onClick={syncPlex} style={styles.actionBtn}>
-                <IconRefresh size={13} color="currentColor" /> Sync Now
+              <button onClick={syncPlex} disabled={syncing} style={{ ...styles.actionBtn, opacity: syncing ? 0.8 : 1, cursor: syncing ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                {syncing
+                  ? <><span style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'currentColor', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block', flexShrink: 0 }} /> Syncing…</>
+                  : <><IconRefresh size={13} color="currentColor" /> Sync Now</>
+                }
               </button>
             </div>
             <p style={styles.cardDesc}>

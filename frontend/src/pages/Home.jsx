@@ -666,7 +666,25 @@ function ArtistRow({ item, index, expanded, albums, page, onSetPage, onExpand, o
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{album.type}{album.year ? ` · ${album.year}` : ''}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                        {album.requestStatus
+                        {album.inPlex
+                          ? (() => {
+                              const ql = album.quality === '24bit-flac' ? '24-bit FLAC'
+                                       : album.quality === '16bit-flac' ? '16-bit FLAC'
+                                       : album.quality === 'flac'       ? 'FLAC' : null
+                              const bg = album.quality === '24bit-flac' ? 'rgba(24,95,165,0.15)'
+                                       : album.quality === '16bit-flac' ? 'rgba(15,110,86,0.15)'
+                                       : 'rgba(26,122,69,0.15)'
+                              const color = album.quality === '24bit-flac' ? '#4f9cf9'
+                                          : album.quality === '16bit-flac' ? '#2dbe6c'
+                                          : 'var(--accent)'
+                              const border = album.quality === '24bit-flac' ? 'rgba(24,95,165,0.3)'
+                                           : album.quality === '16bit-flac' ? 'rgba(15,110,86,0.3)'
+                                           : 'rgba(26,122,69,0.3)'
+                              return <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: bg, color, border: `1px solid ${border}` }}>
+                                {ql ? `✓ In Plex · ${ql}` : '✓ In Plex'}
+                              </span>
+                            })()
+                          : album.requestStatus
                           ? <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'var(--bg-overlay)', color: 'var(--accent)' }}>{album.requestStatus}</span>
                           : <button onClick={() => onRequestAlbum({ ...album, artistName: item.name })}
                               style={{ padding: '5px 11px', background: 'var(--accent-muted)', border: '1px solid var(--accent)', borderRadius: 6, color: 'var(--accent)', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
