@@ -134,9 +134,18 @@ function LibraryCard({ item, type, plexConfig }) {
 }
 
 // ── Request card ──────────────────────────────────────────
-function RequestCard({ req, onRequest }) {
+function RequestCard({ req, plexConfig }) {
   const [imgLoaded, setImgLoaded] = useState(false)
   const [imgError, setImgError]   = useState(false)
+
+  const ratingKey = req.plex_rating_key
+  const machineId = plexConfig?.machineId
+  const openMode  = plexConfig?.openMode || 'both'
+  const localUrl  = plexConfig?.localUrl?.replace(/\/$/, '')
+  const detailPath = ratingKey && machineId ? `#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${ratingKey}` : null
+  const webLink   = detailPath ? `https://app.plex.tv/desktop/${detailPath}` : null
+  const localLink = detailPath && localUrl ? `${localUrl}/web/index.html${detailPath}` : null
+  const showOpenInPlex = detailPath && (openMode === 'web' || openMode === 'local' || openMode === 'both')
 
   return (
     <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.15 }} style={r.card}>
@@ -156,6 +165,22 @@ function RequestCard({ req, onRequest }) {
       <div style={{ marginTop: 4 }}>
         <StatusBadge status={req.status} size="sm" />
       </div>
+      {showOpenInPlex && (
+        <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+          {(openMode === 'web' || openMode === 'both') && webLink && (
+            <a href={webLink} target="_blank" rel="noreferrer"
+              style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(229,160,13,0.12)', color: '#e5a00d', border: '1px solid rgba(229,160,13,0.3)', textDecoration: 'none', display: 'inline-block' }}>
+              ▶ Plex Web
+            </a>
+          )}
+          {(openMode === 'local' || openMode === 'both') && localLink && (
+            <a href={localLink} target="_blank" rel="noreferrer"
+              style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(79,156,249,0.12)', color: '#4f9cf9', border: '1px solid rgba(79,156,249,0.3)', textDecoration: 'none', display: 'inline-block' }}>
+              ▶ Local
+            </a>
+          )}
+        </div>
+      )}
     </motion.div>
   )
 }
@@ -386,7 +411,7 @@ export default function Home() {
                 loading={discoverLoading}
                 emptyMsg="No requests yet"
                 renderCard={(req, i) => (
-                  <RequestCard key={req.id || i} req={req} />
+                  <RequestCard key={req.id || i} req={req} plexConfig={discover?.plexConfig} />
                 )}
               />
             )}

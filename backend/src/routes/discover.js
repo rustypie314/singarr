@@ -87,6 +87,18 @@ async function buildDiscoverData() {
     LIMIT 20
   `).all();
 
+  // For downloaded requests, look up plex_rating_key from library cache
+  const plexLookup = db.prepare(`
+    SELECT plex_rating_key, quality FROM plex_library_cache
+    WHERE type = 'album' AND LOWER(title) = LOWER(?) AND (? IS NULL OR ? = '' OR LOWER(artist_name) = LOWER(?))
+    LIMIT 1
+  `);
+  const enrichedRequests = recentRequests.map(req => {
+    if (req.status !== 'downloaded' || req.type !== 'album') return req;
+    const plexItem = plexLookup.get(req.title, req.artist_name, req.artist_name, req.artist_name);
+    return plexItem ? { ...req, plex_rating_key: plexItem.plex_rating_key, quality: plexItem.quality } : req;
+  });
+
   const totalArtists = db.prepare("SELECT COUNT(*) as c FROM plex_library_cache WHERE type = 'artist'").get().c;
   const totalAlbums  = db.prepare("SELECT COUNT(*) as c FROM plex_library_cache WHERE type = 'album'").get().c;
   const lastSync     = db.prepare('SELECT MAX(synced_at) as t FROM plex_library_cache').get().t;
@@ -118,7 +130,7 @@ async function buildDiscoverData() {
     }));
   }
 
-  return { artists, albums, recentRequests, stats: { totalArtists, totalAlbums, lastSync } };
+  return { artists, albums, recentRequests: enrichedRequests, stats: { totalArtists, totalAlbums, lastSync } };
 }
 
 // GET /api/discover
