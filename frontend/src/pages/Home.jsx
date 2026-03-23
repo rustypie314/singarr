@@ -318,7 +318,7 @@ export default function Home() {
             {/* Artists row */}
             {(discoverLoading || (discover?.artists?.length > 0)) && (
               <ScrollRow
-                title="Artists in your library"
+                title="Artists currently in Plex"
                 items={discover?.artists || []}
                 loading={discoverLoading}
                 emptyMsg="No artists in your Plex library yet"
@@ -331,7 +331,7 @@ export default function Home() {
             {/* Albums row */}
             {(discoverLoading || (discover?.albums?.length > 0)) && (
               <ScrollRow
-                title="Albums in your library"
+                title="Albums available for playback"
                 items={discover?.albums || []}
                 loading={discoverLoading}
                 emptyMsg="No albums in your Plex library yet"
