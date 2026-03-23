@@ -91,10 +91,6 @@ async function buildDiscoverData() {
   const totalAlbums  = db.prepare("SELECT COUNT(*) as c FROM plex_library_cache WHERE type = 'album'").get().c;
   const lastSync     = db.prepare('SELECT MAX(synced_at) as t FROM plex_library_cache').get().t;
 
-  const plexMachineId = db.prepare("SELECT value FROM settings WHERE key = 'plex_machine_id'").get()?.value || null;
-  const plexOpenMode  = db.prepare("SELECT value FROM settings WHERE key = 'plex_open_mode'").get()?.value || 'both';
-  const plexUrl       = db.prepare("SELECT value FROM settings WHERE key = 'plex_url'").get()?.value || null;
-
   // Artists: Fanart.tv > Plex thumb fallback
   const artistFanartImages = fanartKey
     ? await Promise.all(rawArtists.map(a => fanartArtistImage(a.musicbrainz_id, fanartKey)))
@@ -122,24 +118,24 @@ async function buildDiscoverData() {
     }));
   }
 
-  return {
-    artists, albums, recentRequests,
-    stats: { totalArtists, totalAlbums, lastSync },
-    plexConfig: { machineId: plexMachineId, openMode: plexOpenMode, localUrl: plexUrl },
-  };
+  return { artists, albums, recentRequests, stats: { totalArtists, totalAlbums, lastSync } };
 }
-
-// Track if a background refresh is already running
-let refreshing = false;
 
 // GET /api/discover
 router.get('/', requireAuth, async (req, res) => {
+  // plexConfig is always read fresh — never cached — so setting changes take effect immediately
+  const db = getDb();
+  const plexConfig = {
+    machineId: db.prepare("SELECT value FROM settings WHERE key = 'plex_machine_id'").get()?.value || null,
+    openMode:  db.prepare("SELECT value FROM settings WHERE key = 'plex_open_mode'").get()?.value || 'both',
+    localUrl:  db.prepare("SELECT value FROM settings WHERE key = 'plex_url'").get()?.value || null,
+  };
+
   // Try cache first — respond instantly if fresh
   const cached = readCache();
   if (cached) {
-    res.json(cached);
+    res.json({ ...cached, plexConfig });
     // Refresh in background if cache is older than half the TTL
-    const db = getDb();
     const row = db.prepare('SELECT fetched_at FROM discovery_cache WHERE key = ?').get(CACHE_KEY);
     const ageMinutes = row ? (Date.now() - new Date(row.fetched_at).getTime()) / 60000 : CACHE_TTL_MINUTES;
     if (ageMinutes > CACHE_TTL_MINUTES / 2 && !refreshing) {
@@ -156,7 +152,7 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const data = await buildDiscoverData();
     writeCache(data);
-    res.json(data);
+    res.json({ ...data, plexConfig });
   } catch (e) {
     res.status(500).json({ error: 'Failed to load discover data' });
   }

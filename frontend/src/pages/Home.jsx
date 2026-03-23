@@ -189,10 +189,22 @@ export default function Home() {
   const [discoverLoading, setDiscoverLoading] = useState(true)
 
   useEffect(() => {
+    setDiscoverLoading(true)
     api.get('/discover')
       .then(r => setDiscover(r.data))
       .catch(() => setDiscover(null))
       .finally(() => setDiscoverLoading(false))
+
+    // Re-fetch plexConfig when user returns to the tab (catches setting changes)
+    function onVisible() {
+      if (document.visibilityState === 'visible') {
+        api.get('/discover')
+          .then(r => setDiscover(prev => prev ? { ...prev, plexConfig: r.data.plexConfig } : r.data))
+          .catch(() => {})
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
 
   const searchAll = useCallback(debounce(async (q) => {
