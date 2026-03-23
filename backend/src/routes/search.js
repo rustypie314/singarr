@@ -333,6 +333,7 @@ router.get('/artist/:mbid', requireAuth, async (req, res) => {
 router.get('/artist/:mbid/albums', requireAuth, async (req, res) => {
   try {
     const { mbid } = req.params;
+    const artistName = req.query.name || '';
     const db = getDb();
 
     const rgRes = await axios.get(`${MB_BASE}/release-group`, {
@@ -362,7 +363,7 @@ router.get('/artist/:mbid/albums', requireAuth, async (req, res) => {
       const existingRequest = db.prepare(
         `SELECT status FROM requests WHERE musicbrainz_id = ? AND type = 'album'`
       ).get(g.id);
-      const artistCredit = g['artist-credit']?.[0]?.artist?.name || '';
+      const artistCredit = artistName || g['artist-credit']?.[0]?.artist?.name || '';
       const plexInfo = isInPlexLibrary(g.title, artistCredit, 'album');
       return {
         id: g.id,

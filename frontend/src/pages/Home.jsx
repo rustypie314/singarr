@@ -215,12 +215,12 @@ export default function Home() {
     } catch { toast.error('Could not load tracks') }
   }
 
-  async function loadArtistAlbums(artistId) {
+  async function loadArtistAlbums(artistId, artistName) {
     if (expandedArtist === artistId) { setExpandedArtist(null); return }
     if (artistAlbums[artistId]) { setExpandedArtist(artistId); return }
     setArtistAlbumLoading(true)
     try {
-      const res = await api.get(`/search/artist/${artistId}/albums`)
+      const res = await api.get(`/search/artist/${artistId}/albums`, { params: { name: artistName } })
       setArtistAlbums(prev => ({ ...prev, [artistId]: res.data.albums || [] }))
       setArtistAlbumPage(prev => ({ ...prev, [artistId]: 0 }))
       setExpandedArtist(artistId)
@@ -418,7 +418,7 @@ export default function Home() {
                     albums={artistAlbums[item.id]}
                     page={artistAlbumPage[item.id] || 0}
                     onSetPage={p => setArtistAlbumPage(prev => ({ ...prev, [item.id]: p }))}
-                    onExpand={() => loadArtistAlbums(item.id)}
+                    onExpand={() => loadArtistAlbums(item.id, item.name)}
                     onRequestArtist={() => requestItem(item, 'artist')}
                     onRequestAlbum={(a) => requestItem(a, 'album')} api={api}
                   />
@@ -437,7 +437,7 @@ export default function Home() {
                       albums={artistAlbums[item.id]}
                       page={artistAlbumPage[item.id] || 0}
                       onSetPage={p => setArtistAlbumPage(prev => ({ ...prev, [item.id]: p }))}
-                      onExpand={() => loadArtistAlbums(item.id)}
+                      onExpand={() => loadArtistAlbums(item.id, item.name)}
                       onRequestArtist={() => requestItem(item, 'artist')}
                       onRequestAlbum={(a) => requestItem(a, 'album')} api={api}
                     />
