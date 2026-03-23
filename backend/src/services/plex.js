@@ -81,12 +81,15 @@ async function syncPlexLibrary() {
           params: { includeMedia: 1 }
         });
         const tracks = res.data?.MediaContainer?.Metadata || [];
-        // Debug first track of first album only
+        // Debug first track only
         if (tracks[0]?.Media?.[0]) {
           const m = tracks[0].Media[0];
-          console.log('[Plex Quality Debug] media keys:', Object.keys(m));
-          console.log('[Plex Quality Debug] bitDepth:', m.bitDepth, 'audioCodec:', m.audioCodec);
-          if (m.Part?.[0]?.Stream) console.log('[Plex Quality Debug] streams:', JSON.stringify(m.Part[0].Stream.slice(0,2)));
+          const part = m.Part?.[0];
+          const streams = part?.Stream || [];
+          console.log('[Plex Quality Debug] audioCodec:', m.audioCodec, 'bitDepth on media:', m.bitDepth);
+          console.log('[Plex Quality Debug] part keys:', part ? Object.keys(part).join(',') : 'none');
+          console.log('[Plex Quality Debug] stream count:', streams.length);
+          streams.forEach((s, i) => console.log(`[Plex Quality Debug] stream[${i}]:`, JSON.stringify(s)));
         }
         let maxBitDepth = 0;
         let hasFlac = false;
