@@ -34,16 +34,6 @@ const ISSUE_TYPES = {
 // Get issues (users see own, admin sees all)
 router.get('/', requireAuth, (req, res) => {
   const db = getDb();
-  console.log('[Issues] GET / user:', req.user.id, 'is_admin:', req.user.is_admin);
-
-  // Debug: check raw issues count
-  const rawCount = db.prepare('SELECT COUNT(*) as c FROM issues').get().c;
-  console.log('[Issues] raw issues in DB:', rawCount);
-  if (rawCount > 0) {
-    const sample = db.prepare('SELECT id, user_id, title FROM issues LIMIT 3').all();
-    console.log('[Issues] sample:', JSON.stringify(sample));
-  }
-
   let issues;
   if (req.user.is_admin) {
     issues = db.prepare(`
@@ -65,7 +55,6 @@ router.get('/', requireAuth, (req, res) => {
       ORDER BY i.created_at DESC
     `).all(req.user.id);
   }
-  console.log('[Issues] returning:', issues.length, 'issues');
   res.json({ issues });
 });
 
@@ -84,22 +73,27 @@ router.post('/', requireAuth, (req, res) => {
   if (!type || !title) return res.status(400).json({ error: 'type and title are required' });
   if (!ISSUE_TYPES[type]) return res.status(400).json({ error: 'Invalid issue type' });
 
-  const db = getDb();
-  const result = db.prepare(`
-    INSERT INTO issues (user_id, request_id, type, title, description)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(req.user.id, requestId || null, type, title.trim(), description?.trim() || null);
+  try {
+    const db = getDb();
+    const result = db.prepare(`
+      INSERT INTO issues (user_id, request_id, type, title, description)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(req.user.id, requestId || null, type, title.trim(), description?.trim() || null);
 
-  const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(result.lastInsertRowid);
+    const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(result.lastInsertRowid);
 
-  // Notify admin
-  const admin = db.prepare('SELECT email FROM users WHERE is_local_admin = 1 OR is_admin = 1 ORDER BY is_local_admin DESC LIMIT 1').get();
-  const appUrl = db.prepare("SELECT value FROM settings WHERE key = 'app_url'").get()?.value || '';
-  if (admin?.email) {
-    notifyAdminNewIssue(issue, req.user.username, admin.email, appUrl).catch(() => {});
+    // Notify admin
+    const admin = db.prepare('SELECT email FROM users WHERE is_local_admin = 1 OR is_admin = 1 ORDER BY is_local_admin DESC LIMIT 1').get();
+    const appUrl = db.prepare("SELECT value FROM settings WHERE key = 'app_url'").get()?.value || '';
+    if (admin?.email) {
+      notifyAdminNewIssue(issue, req.user.username, admin.email, appUrl).catch(() => {});
+    }
+
+    res.status(201).json({ issue });
+  } catch (e) {
+    console.error('[Issues] POST error:', e.message);
+    res.status(500).json({ error: e.message });
   }
-
-  res.status(201).json({ issue });
 });
 
 // SSE stream endpoint — token passed as query param since EventSource can't set headers
