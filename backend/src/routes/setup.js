@@ -163,13 +163,30 @@ router.post('/test/plex', async (req, res) => {
   const { url, token } = req.body;
   if (!url || !token) return res.status(400).json({ ok: false, error: 'URL and token required' });
   try {
-    const response = await axios.get(`${url.replace(/\/$/, '')}/`, {
-      params: { 'X-Plex-Token': token },
-      headers: { Accept: 'application/json' },
-      timeout: 8000,
-    });
-    const name = response.data?.MediaContainer?.friendlyName || 'Plex Server';
-    res.json({ ok: true, serverName: name });
+    const baseUrl = url.replace(/\/$/, '');
+    const [rootRes, identityRes] = await Promise.all([
+      axios.get(`${baseUrl}/`, {
+        params: { 'X-Plex-Token': token },
+        headers: { Accept: 'application/json' },
+        timeout: 8000,
+      }),
+      axios.get(`${baseUrl}/identity`, {
+        params: { 'X-Plex-Token': token },
+        headers: { Accept: 'application/json' },
+        timeout: 8000,
+      }),
+    ]);
+    const name = rootRes.data?.MediaContainer?.friendlyName || 'Plex Server';
+    const machineId = identityRes.data?.MediaContainer?.machineIdentifier || null;
+
+    // Store machineIdentifier in settings for Open in Plex links
+    if (machineId) {
+      const db = getDb();
+      db.prepare('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)')
+        .run('plex_machine_id', machineId);
+    }
+
+    res.json({ ok: true, serverName: name, machineId });
   } catch (e) {
     res.json({ ok: false, error: 'Could not connect to Plex server' });
   }

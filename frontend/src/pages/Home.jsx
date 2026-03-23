@@ -63,7 +63,7 @@ function ScrollRow({ title, items, renderCard, emptyMsg, loading }) {
 }
 
 // ── Library card (artist or album from Plex) ──────────────
-function LibraryCard({ item, type }) {
+function LibraryCard({ item, type, plexConfig }) {
   const [imgLoaded, setImgLoaded] = useState(false)
   const [imgError, setImgError]   = useState(false)
   const isArtist = type === 'artist'
@@ -78,6 +78,16 @@ function LibraryCard({ item, type }) {
   const badgeColor = item.quality === '24bit-flac' ? { bg: 'rgba(24,95,165,0.85)', color: '#B5D4F4' }
                    : item.quality === '16bit-flac' ? { bg: 'rgba(15,110,86,0.85)', color: '#9FE1CB' }
                    : { bg: 'rgba(26,122,69,0.85)', color: '#fff' }
+
+  // Build Open in Plex URLs
+  const ratingKey = item.plex_rating_key
+  const machineId = plexConfig?.machineId
+  const openMode  = plexConfig?.openMode || 'both'
+  const localUrl  = plexConfig?.localUrl?.replace(/\/$/, '')
+  const detailPath = ratingKey && machineId ? `#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${ratingKey}` : null
+  const webLink   = detailPath ? `https://app.plex.tv/desktop/${detailPath}` : null
+  const localLink = detailPath && localUrl ? `${localUrl}/web/index.html${detailPath}` : null
+  const showOpenInPlex = !isArtist && detailPath && (openMode === 'web' || openMode === 'local' || openMode === 'both')
 
   return (
     <motion.div
@@ -103,6 +113,22 @@ function LibraryCard({ item, type }) {
           {badgeText}
         </span>
       </div>
+      {showOpenInPlex && (
+        <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+          {(openMode === 'web' || openMode === 'both') && webLink && (
+            <a href={webLink} target="_blank" rel="noreferrer"
+              style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(229,160,13,0.12)', color: '#e5a00d', border: '1px solid rgba(229,160,13,0.3)', textDecoration: 'none', display: 'inline-block' }}>
+              ▶ Plex Web
+            </a>
+          )}
+          {(openMode === 'local' || openMode === 'both') && localLink && (
+            <a href={localLink} target="_blank" rel="noreferrer"
+              style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(79,156,249,0.12)', color: '#4f9cf9', border: '1px solid rgba(79,156,249,0.3)', textDecoration: 'none', display: 'inline-block' }}>
+              ▶ Local
+            </a>
+          )}
+        </div>
+      )}
     </motion.div>
   )
 }
@@ -335,7 +361,7 @@ export default function Home() {
                 loading={discoverLoading}
                 emptyMsg="No albums in your Plex library yet"
                 renderCard={(item, i) => (
-                  <LibraryCard key={item.plex_rating_key || i} item={item} type="album" />
+                  <LibraryCard key={item.plex_rating_key || i} item={item} type="album" plexConfig={discover?.plexConfig} />
                 )}
               />
             )}

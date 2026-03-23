@@ -392,6 +392,29 @@ export default function Admin() {
                 </div>
               </div>
               <TestPill result={tests.plex} />
+
+              <div style={{ marginTop: 14 }}>
+                <label style={styles.fieldLabel}>Open In Plex via</label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                  {[
+                    { value: 'web',   label: 'Plex Web (app.plex.tv)' },
+                    { value: 'local', label: 'Local Server' },
+                    { value: 'both',  label: 'Both' },
+                  ].map(opt => (
+                    <button key={opt.value}
+                      onClick={() => setSettings(s => ({ ...s, plex_open_mode: opt.value }))}
+                      style={{
+                        padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                        fontFamily: 'var(--font-sans)', cursor: 'pointer', border: '1px solid',
+                        background: settings.plex_open_mode === opt.value ? 'var(--accent-muted)' : 'transparent',
+                        color: settings.plex_open_mode === opt.value ? 'var(--accent)' : 'var(--text-secondary)',
+                        borderColor: settings.plex_open_mode === opt.value ? 'var(--accent)' : 'var(--border)',
+                      }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div style={{ marginTop: 14, padding: '10px 14px', background: 'rgba(79,156,249,0.07)', border: '1px solid rgba(79,156,249,0.18)', borderRadius: 9, fontSize: 12, color: 'var(--text-secondary)' }}>

@@ -188,6 +188,7 @@ function runMigrations() {
   // Per-type limit defaults for existing installs
   insertSetting.run('global_album_limit', '10');
   insertSetting.run('global_track_limit', '20');
+  insertSetting.run('plex_open_mode', 'both');
 
   // quality column for existing plex_library_cache
   const plexCols = db.pragma('table_info(plex_library_cache)').map(c => c.name);

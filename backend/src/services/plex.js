@@ -34,6 +34,16 @@ async function syncPlexLibrary() {
 
   const db = getDb();
 
+  // Fetch and store machineIdentifier for Open in Plex links
+  try {
+    const identityRes = await client.get('/identity');
+    const machineId = identityRes.data?.MediaContainer?.machineIdentifier;
+    if (machineId) {
+      db.prepare('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)')
+        .run('plex_machine_id', machineId);
+    }
+  } catch {}
+
   // Get music library sections
   const sectionsRes = await client.get('/library/sections');
   const sections = (sectionsRes.data?.MediaContainer?.Directory || []).filter(s => s.type === 'artist');
