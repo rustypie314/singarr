@@ -2,8 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useOutletContext } from 'react-router-dom'
-import StatusBadge from '../components/StatusBadge.jsx'
-import { IconIssue, IconPlus, IconTrash, IconCheck, IconRefresh } from '../components/Icons.jsx'
+import { IconIssue, IconPlus, IconTrash, IconRefresh } from '../components/Icons.jsx'
 import toast from 'react-hot-toast'
 
 const ISSUE_TYPES = [
@@ -103,10 +102,6 @@ export default function Issues() {
       setIssues(i => i.filter(x => x.id !== id))
       ctx?.refreshCounts?.()
     } catch { toast.error('Failed to delete issue') }
-  }
-
-  async function addAdminNote(id, note) {
-    // kept for compat — notes now handled inside IssueCard via thread
   }
 
   const filtered = filter === 'all' ? issues : issues.filter(i => i.status === filter)

@@ -241,9 +241,6 @@ router.post('/:id/notes', requireAuth, async (req, res) => {
     // User posted — email the admin
     const admin = db.prepare('SELECT email FROM users WHERE is_local_admin = 1 OR is_admin = 1 ORDER BY is_local_admin DESC LIMIT 1').get();
     if (admin?.email) {
-      const { sendEmail } = require('../services/email');
-      const { getEmailConfig } = require('../services/email');
-      // Simple admin alert
       notifyAdminNewIssue(
         { ...issue, title: `Reply on: ${issue.title}`, description: body.trim(), type: 'other' },
         req.user.username, admin.email, appUrl

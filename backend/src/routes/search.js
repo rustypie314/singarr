@@ -25,32 +25,6 @@ function getApiKey(dbKey, envKey) {
 // ── Last.fm helpers ───────────────────────────────────────
 
 // Search Last.fm for artists — returns image map keyed by lowercase name
-async function lastfmArtistSearch(query) {
-  const apiKey = getApiKey('lastfm_api_key', 'LASTFM_API_KEY');
-  if (!apiKey) return {};
-  try {
-    const res = await axios.get('https://ws.audioscrobbler.com/2.0/', {
-      params: { method: 'artist.search', artist: query, api_key: apiKey, format: 'json', limit: 20 },
-      timeout: 6000,
-    });
-    const artists = res.data?.results?.artistmatches?.artist || [];
-    const map = {};
-    for (const a of artists) {
-      // Last.fm returns array of images: small, medium, large, extralarge, mega
-      const images = Array.isArray(a.image) ? a.image : [];
-      const img = images.find(i => i.size === 'extralarge')?.['#text']
-               || images.find(i => i.size === 'large')?.['#text']
-               || images.find(i => i.size === 'mega')?.['#text']
-               || null;
-      // Skip the generic placeholder image Last.fm uses
-      if (img && !img.includes('2a96cbd8b46e442fc41c2b86b821562f')) {
-        map[a.name.toLowerCase()] = img;
-      }
-    }
-    return map;
-  } catch { return {}; }
-}
-
 async function lastfmArtistInfo(artistName) {
   const apiKey = getApiKey('lastfm_api_key', 'LASTFM_API_KEY');
   if (!apiKey) return null;

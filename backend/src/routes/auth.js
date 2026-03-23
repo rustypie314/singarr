@@ -195,32 +195,4 @@ router.post('/local/change-display-name', requireAuth, (req, res) => {
   res.json({ success: true, displayName: trimmed || null });
 });
 
-router.post('/local/change-username', requireAuth, async (req, res) => {
-  if (!req.user.is_local_admin) {
-    return res.status(403).json({ error: 'Not authorized' });
-  }
-  const { newUsername, currentPassword } = req.body;
-  if (!newUsername || !currentPassword) {
-    return res.status(400).json({ error: 'New username and current password required' });
-  }
-  const trimmed = newUsername.trim();
-  if (trimmed.length < 3) {
-    return res.status(400).json({ error: 'Username must be at least 3 characters' });
-  }
-
-  const db = getDb();
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-
-  const valid = await bcrypt.compare(currentPassword, user.local_password_hash);
-  if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
-
-  const existing = db.prepare('SELECT id FROM users WHERE local_username = ? AND id != ?').get(trimmed, req.user.id);
-  if (existing) return res.status(409).json({ error: 'That username is already taken' });
-
-  db.prepare('UPDATE users SET username = ?, local_username = ? WHERE id = ?').run(trimmed, trimmed, req.user.id);
-  res.json({ success: true, username: trimmed });
-});
-
-
-
 module.exports = router;
