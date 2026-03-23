@@ -81,19 +81,36 @@ async function syncPlexLibrary() {
           params: { includeMedia: 1 }
         });
         const tracks = res.data?.MediaContainer?.Metadata || [];
+        // Debug first track of first album only
+        if (tracks[0]?.Media?.[0]) {
+          const m = tracks[0].Media[0];
+          console.log('[Plex Quality Debug] media keys:', Object.keys(m));
+          console.log('[Plex Quality Debug] bitDepth:', m.bitDepth, 'audioCodec:', m.audioCodec);
+          if (m.Part?.[0]?.Stream) console.log('[Plex Quality Debug] streams:', JSON.stringify(m.Part[0].Stream.slice(0,2)));
+        }
         let maxBitDepth = 0;
         let hasFlac = false;
         for (const track of tracks) {
           const media = track.Media?.[0];
           if (!media) continue;
           if (media.audioCodec === 'flac') hasFlac = true;
-          const bitDepth = media.bitDepth || 0;
+          // bitDepth can be on Media directly OR inside Media.Part[].Stream[]
+          let bitDepth = media.bitDepth || 0;
+          if (!bitDepth) {
+            const streams = media.Part?.[0]?.Stream || [];
+            for (const stream of streams) {
+              if (stream.streamType === 2 || stream.codec === 'flac') {
+                bitDepth = stream.bitDepth || 0;
+                break;
+              }
+            }
+          }
           if (bitDepth > maxBitDepth) maxBitDepth = bitDepth;
         }
         if (!hasFlac) return null;
         if (maxBitDepth >= 24) return '24bit-flac';
         if (maxBitDepth >= 16) return '16bit-flac';
-        return 'flac'; // unknown bit depth but still FLAC
+        return 'flac';
       } catch { return null; }
     }
 
