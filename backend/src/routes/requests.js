@@ -25,7 +25,8 @@ router.get('/', requireAuth, (req, res) => {
 });
 
 // Get all requests (admin sees all, users see own)
-router.get('/all', requireAuth, (req, res) => {  const db = getDb();
+router.get('/all', requireAuth, (req, res) => {
+  const db = getDb();
   let requests;
   if (req.user.is_admin) {
     requests = db.prepare(`
@@ -42,7 +43,26 @@ router.get('/all', requireAuth, (req, res) => {  const db = getDb();
       ORDER BY r.created_at DESC
     `).all(req.user.id);
   }
-  res.json({ requests });
+
+  // Cross-reference downloaded album requests with plex_library_cache
+  const plexLookup = db.prepare(`
+    SELECT plex_rating_key FROM plex_library_cache
+    WHERE type = 'album' AND LOWER(title) = LOWER(?) AND (? IS NULL OR ? = '' OR LOWER(artist_name) = LOWER(?))
+    LIMIT 1
+  `);
+  const enriched = requests.map(r => {
+    if (r.status !== 'downloaded' || r.type !== 'album') return r;
+    const plexItem = plexLookup.get(r.title, r.artist_name, r.artist_name, r.artist_name);
+    return plexItem ? { ...r, plex_rating_key: plexItem.plex_rating_key } : r;
+  });
+
+  const plexConfig = {
+    machineId: db.prepare("SELECT value FROM settings WHERE key = 'plex_machine_id'").get()?.value || null,
+    openMode:  db.prepare("SELECT value FROM settings WHERE key = 'plex_open_mode'").get()?.value || 'both',
+    localUrl:  db.prepare("SELECT value FROM settings WHERE key = 'plex_url'").get()?.value || null,
+  };
+
+  res.json({ requests: enriched, plexConfig });
 });
 
 // Get request limit status for current user

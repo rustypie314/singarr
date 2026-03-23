@@ -110,10 +110,12 @@ export default function Layout() {
         </nav>
 
         <div style={styles.sidebarBottom}>
-          <button onClick={toggle} style={{ ...styles.themeBtn }} className="hide-mobile">
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
-
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <button onClick={toggle} style={{ ...styles.themeBtn }} className="hide-mobile">
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, letterSpacing: '0.02em' }}>v1.0.3</span>
+          </div>
           <div style={styles.userCard}>
             <div style={styles.userRow}>
               {user?.avatar

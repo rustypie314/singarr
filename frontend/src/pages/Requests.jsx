@@ -10,6 +10,7 @@ export default function Requests() {
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [plexConfig, setPlexConfig] = useState(null)
 
   useEffect(() => { fetchRequests() }, [])
 
@@ -17,6 +18,7 @@ export default function Requests() {
     try {
       const res = await api.get('/requests/all')
       setRequests(res.data.requests || [])
+      setPlexConfig(res.data.plexConfig || null)
     } catch { toast.error('Failed to load requests') }
     finally { setLoading(false) }
   }
@@ -125,6 +127,39 @@ export default function Requests() {
               {/* Status */}
               <div style={styles.rowStatus}>
                 <StatusBadge status={req.status} />
+                {(() => {
+                  const ratingKey = req.plex_rating_key
+                  const machineId = plexConfig?.machineId
+                  const openMode  = plexConfig?.openMode || 'both'
+                  const localUrl  = plexConfig?.localUrl?.replace(/\/$/, '')
+                  const detailPath = ratingKey && machineId ? `#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${ratingKey}` : null
+                  const webLink   = detailPath ? `https://app.plex.tv/desktop/${detailPath}` : null
+                  const localLink = detailPath && localUrl ? `${localUrl}/web/index.html${detailPath}` : null
+                  if (!detailPath) return null
+                  return (
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6, justifyContent: 'flex-end' }}>
+                      {(openMode === 'web' || openMode === 'both') && webLink && (
+                        <a href={webLink} target="_blank" rel="noreferrer"
+                          style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(229,160,13,0.12)', color: '#e5a00d', border: '1px solid rgba(229,160,13,0.3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#e5a00d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                          </svg>
+                          Open in Plex
+                        </a>
+                      )}
+                      {(openMode === 'local' || openMode === 'both') && localLink && (
+                        <a href={localLink} target="_blank" rel="noreferrer"
+                          style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(79,156,249,0.12)', color: '#4f9cf9', border: '1px solid rgba(79,156,249,0.3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4f9cf9" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                          </svg>
+                          Open in Plex
+                        </a>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
 
               {/* Actions */}
