@@ -35,13 +35,22 @@ const ISSUE_TYPES = {
 router.get('/', requireAuth, (req, res) => {
   const db = getDb();
   console.log('[Issues] GET / user:', req.user.id, 'is_admin:', req.user.is_admin);
+
+  // Debug: check raw issues count
+  const rawCount = db.prepare('SELECT COUNT(*) as c FROM issues').get().c;
+  console.log('[Issues] raw issues in DB:', rawCount);
+  if (rawCount > 0) {
+    const sample = db.prepare('SELECT id, user_id, title FROM issues LIMIT 3').all();
+    console.log('[Issues] sample:', JSON.stringify(sample));
+  }
+
   let issues;
   if (req.user.is_admin) {
     issues = db.prepare(`
       SELECT i.*, u.username, u.avatar,
         r.title as request_title, r.cover_url as request_cover
       FROM issues i
-      JOIN users u ON i.user_id = u.id
+      LEFT JOIN users u ON i.user_id = u.id
       LEFT JOIN requests r ON i.request_id = r.id
       ORDER BY i.created_at DESC
     `).all();
@@ -50,7 +59,7 @@ router.get('/', requireAuth, (req, res) => {
       SELECT i.*, u.username, u.avatar,
         r.title as request_title, r.cover_url as request_cover
       FROM issues i
-      JOIN users u ON i.user_id = u.id
+      LEFT JOIN users u ON i.user_id = u.id
       LEFT JOIN requests r ON i.request_id = r.id
       WHERE i.user_id = ?
       ORDER BY i.created_at DESC
