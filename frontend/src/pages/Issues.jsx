@@ -346,8 +346,7 @@ function IssueCard({ issue: initialIssue, index, isAdmin, onUpdateStatus, onDele
     if (!newNote.trim()) return
     setPosting(true)
     try {
-      const r = await api.post(`/issues/${issue.id}/notes`, { body: newNote.trim() })
-      setNotes(prev => [...(prev || []), r.data.note])
+      await api.post(`/issues/${issue.id}/notes`, { body: newNote.trim() })
       setNewNote('')
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to post note')
