@@ -143,6 +143,11 @@ async function syncPlexLibrary() {
   }
 
   console.log(`[Plex] Synced library: ${totalArtists} artists, ${totalAlbums} albums`);
+
+  // Invalidate discover cache so next page load picks up new library content
+  try {
+    getDb().prepare('DELETE FROM discovery_cache WHERE key = ?').run('discover_main');
+  } catch {}
 }
 
 function isInPlexLibrary(title, artistName, type) {

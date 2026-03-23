@@ -5,6 +5,9 @@ const { getDb } = require('../db');
 
 const router = express.Router();
 
+const CACHE_KEY = 'discover_main';
+const CACHE_TTL_MINUTES = 30;
+
 function getApiKey(dbKey, envKey) {
   try {
     const db = getDb();
@@ -26,7 +29,6 @@ async function fanartArtistImage(mbid, apiKey) {
   } catch { return null; }
 }
 
-// Fetch album art from Last.fm
 async function lastfmAlbumImage(albumTitle, artistName, apiKey) {
   try {
     const res = await axios.get('https://ws.audioscrobbler.com/2.0/', {
@@ -41,13 +43,30 @@ async function lastfmAlbumImage(albumTitle, artistName, apiKey) {
   } catch { return null; }
 }
 
-// GET /api/discover
-router.get('/', requireAuth, async (req, res) => {
+function readCache() {
+  try {
+    const db = getDb();
+    const row = db.prepare('SELECT data, fetched_at FROM discovery_cache WHERE key = ?').get(CACHE_KEY);
+    if (!row) return null;
+    const ageMinutes = (Date.now() - new Date(row.fetched_at).getTime()) / 60000;
+    if (ageMinutes > CACHE_TTL_MINUTES) return null;
+    return JSON.parse(row.data);
+  } catch { return null; }
+}
+
+function writeCache(data) {
+  try {
+    const db = getDb();
+    db.prepare('INSERT OR REPLACE INTO discovery_cache (key, data, fetched_at) VALUES (?, ?, CURRENT_TIMESTAMP)')
+      .run(CACHE_KEY, JSON.stringify(data));
+  } catch {}
+}
+
+async function buildDiscoverData() {
   const db = getDb();
   const fanartKey = getApiKey('fanart_api_key', 'FANART_API_KEY');
   const lastfmKey = getApiKey('lastfm_api_key', 'LASTFM_API_KEY');
 
-  // Pull random samples from Plex cache
   const rawArtists = db.prepare(`
     SELECT title, plex_rating_key, thumb, musicbrainz_id FROM plex_library_cache
     WHERE type = 'artist' ORDER BY RANDOM() LIMIT 20
@@ -58,7 +77,6 @@ router.get('/', requireAuth, async (req, res) => {
     WHERE type = 'album' ORDER BY RANDOM() LIMIT 20
   `).all();
 
-  // Recent requests
   const recentRequests = db.prepare(`
     SELECT r.id, r.type, r.title, r.artist_name, r.cover_url, r.status, r.created_at,
            u.username, u.avatar
@@ -69,12 +87,11 @@ router.get('/', requireAuth, async (req, res) => {
     LIMIT 20
   `).all();
 
-  // Library stats
   const totalArtists = db.prepare("SELECT COUNT(*) as c FROM plex_library_cache WHERE type = 'artist'").get().c;
   const totalAlbums  = db.prepare("SELECT COUNT(*) as c FROM plex_library_cache WHERE type = 'album'").get().c;
   const lastSync     = db.prepare('SELECT MAX(synced_at) as t FROM plex_library_cache').get().t;
 
-  // Artists: Fanart.tv (best quality) > Plex thumb fallback
+  // Artists: Fanart.tv > Plex thumb fallback
   const artistFanartImages = fanartKey
     ? await Promise.all(rawArtists.map(a => fanartArtistImage(a.musicbrainz_id, fanartKey)))
     : rawArtists.map(() => null);
@@ -101,12 +118,40 @@ router.get('/', requireAuth, async (req, res) => {
     }));
   }
 
-  res.json({
-    artists,
-    albums,
-    recentRequests,
-    stats: { totalArtists, totalAlbums, lastSync },
-  });
+  return { artists, albums, recentRequests, stats: { totalArtists, totalAlbums, lastSync } };
+}
+
+// Track if a background refresh is already running
+let refreshing = false;
+
+// GET /api/discover
+router.get('/', requireAuth, async (req, res) => {
+  // Try cache first — respond instantly if fresh
+  const cached = readCache();
+  if (cached) {
+    res.json(cached);
+    // Refresh in background if cache is older than half the TTL
+    const db = getDb();
+    const row = db.prepare('SELECT fetched_at FROM discovery_cache WHERE key = ?').get(CACHE_KEY);
+    const ageMinutes = row ? (Date.now() - new Date(row.fetched_at).getTime()) / 60000 : CACHE_TTL_MINUTES;
+    if (ageMinutes > CACHE_TTL_MINUTES / 2 && !refreshing) {
+      refreshing = true;
+      buildDiscoverData()
+        .then(writeCache)
+        .catch(() => {})
+        .finally(() => { refreshing = false; });
+    }
+    return;
+  }
+
+  // No cache — build fresh and respond
+  try {
+    const data = await buildDiscoverData();
+    writeCache(data);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load discover data' });
+  }
 });
 
 module.exports = router;
