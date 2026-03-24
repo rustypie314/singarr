@@ -114,7 +114,7 @@ export default function Layout() {
             <button onClick={toggle} style={{ ...styles.themeBtn }} className="hide-mobile">
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, letterSpacing: '0.02em' }}>v1.0.3</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, letterSpacing: '0.02em' }}>v{__APP_VERSION__}</span>
           </div>
           <div style={styles.userCard}>
             <div style={styles.userRow}>

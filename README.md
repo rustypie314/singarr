@@ -29,6 +29,7 @@ Singarr is an Overseerr-style music request app for Plex + Lidarr. Users log in 
 - 💿 **Album art** — powered by Last.fm with Plex thumbnail fallback
 - 🏷️ **FLAC quality badges** — albums show 16-bit or 24-bit FLAC status
 - 🎸 **Genre browsing** — filter your library artists by genre
+- 🎯 **Similar artists** — after requesting an artist, see similar artist suggestions from Last.fm
 - ▶️ **Open in Plex** — one-click buttons to open albums in Plex Web or your local server
 - 📬 **Recent requests** — see what's been recently requested with play buttons for downloaded items
 
