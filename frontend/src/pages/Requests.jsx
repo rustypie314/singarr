@@ -126,7 +126,19 @@ export default function Requests() {
 
               {/* Status */}
               <div style={styles.rowStatus}>
-                <StatusBadge status={req.status} />
+                {req.status === 'downloaded' && req.plex_rating_key && req.quality ? (() => {
+                  const qualityLabel = req.quality === '24bit-flac' ? '24-bit FLAC'
+                                     : req.quality === '16bit-flac' ? '16-bit FLAC'
+                                     : req.quality === 'flac'       ? 'FLAC' : null
+                  const bg    = req.quality === '24bit-flac' ? 'rgba(24,95,165,0.85)' : 'rgba(15,110,86,0.85)'
+                  const color = req.quality === '24bit-flac' ? '#B5D4F4' : '#9FE1CB'
+                  return qualityLabel
+                    ? <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999, background: bg, color, display: 'inline-block' }}>
+                        ✓ Downloaded · {qualityLabel}
+                      </span>
+                    : <StatusBadge status={req.status} />
+                })()
+                : <StatusBadge status={req.status} />}
                 {(() => {
                   const ratingKey = req.plex_rating_key
                   const machineId = plexConfig?.machineId

@@ -92,11 +92,11 @@ Open `http://your-server:8684` in your browser. **The first user to log in becom
 
 ## API Keys
 
-All API keys are configured inside the app under **Settings → Administration** and **Settings → Metadata Providers**. No `.env` file required for normal use.
+All API keys are configured inside the app under **Settings → Services** and **Settings → Metadata Providers**. No `.env` file required for normal use.
 
 | Service | Where to get it | Required |
 |---|---|---|
-| Plex Token | Settings → Administration → Plex | ✅ |
+| Plex Token | Settings → Services → Plex | ✅ |
 | Lidarr API Key | Lidarr → Settings → General | ✅ |
 | Last.fm API Key | https://www.last.fm/api/account/create | Recommended |
 | Fanart.tv API Key | https://fanart.tv/get-an-api-key | Recommended |
@@ -144,7 +144,7 @@ Singarr caches your Plex library hourly. The sync populates:
 Trigger a manual sync from **Settings → Overview → Sync Now**.
 
 ### Open in Plex
-Configure under **Settings → Administration → Open In Plex via**. Choose:
+Configure under **Settings → Services → Open In Plex via**. Choose:
 - **Plex Web** — opens `app.plex.tv` (works from anywhere)
 - **Local Server** — opens your Plex server directly (faster on local network)
 - **Both** — shows both buttons
@@ -201,7 +201,7 @@ Your database is stored in a Docker volume and persists across updates.
 ## Troubleshooting
 
 **Can't log in with Plex?**  
-Check that your Plex URL and token are correct in Settings → Administration.
+Check that your Plex URL and token are correct in Settings → Services.
 
 **Requests not going to Lidarr?**  
 Verify your Lidarr URL and API key. Make sure Lidarr has at least one quality profile and root folder configured.

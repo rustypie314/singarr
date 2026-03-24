@@ -19,7 +19,6 @@ export default function Admin() {
   const isDirty = settings !== null && savedSettings.current !== null &&
     JSON.stringify(settings) !== JSON.stringify(savedSettings.current)
   const [users, setUsers] = useState([])
-  const [requests, setRequests] = useState([])
   const [saving, setSaving] = useState(false)
   const [syncing, setSyncing] = useState(false)
 
@@ -39,7 +38,7 @@ export default function Admin() {
     try {
       const plexUrl = settings?.plex_url
       const plexToken = settings?.plex_token
-      if (!plexUrl || !plexToken) return toast.error('Configure Plex URL and token in the Administration tab first')
+      if (!plexUrl || !plexToken) return toast.error('Configure Plex URL and token in the Services tab first')
       const { data } = await api.post('/setup/plex/users', { plexUrl, plexToken })
       const incoming = data.users || []
       if (!incoming.length) return toast('No Plex users found on your server', { icon: 'ℹ️' })
@@ -105,7 +104,6 @@ export default function Admin() {
     fetchStats()
     fetchSettings()
     fetchUsers()
-    fetchRequests()
   }, [])
 
   async function fetchStats() {
@@ -120,9 +118,6 @@ export default function Admin() {
   }
   async function fetchUsers() {
     try { const r = await api.get('/admin/users'); setUsers(r.data.users) } catch {}
-  }
-  async function fetchRequests() {
-    try { const r = await api.get('/requests/all'); setRequests(r.data.requests || []) } catch {}
   }
 
   async function saveSettings() {
@@ -179,8 +174,7 @@ export default function Admin() {
     try {
       await api.put(`/admin/requests/${id}`, { status })
       toast.success('Request updated')
-      fetchRequests()
-    } catch { toast.error('Failed to update request') }
+      } catch { toast.error('Failed to update request') }
   }
 
   async function syncPlex() {
@@ -196,7 +190,7 @@ export default function Admin() {
     }
   }
 
-  const TABS = ['overview', 'administration', 'users', 'requests', 'notifications', 'metadata', 'account', 'analytics']
+  const TABS = ['overview', 'services', 'requests', 'users', 'notifications', 'metadata', 'account', 'analytics']
 
   const [showDirtyModal, setShowDirtyModal] = useState(false)
   const pendingNav = useRef(null)
@@ -275,7 +269,7 @@ export default function Admin() {
       {/* Tabs */}
       <div style={styles.tabBar}>
         {TABS.map(t => {
-          const labels = { overview:'Overview', administration:'Administration', users:'Users', requests:'Requests', notifications:'Notifications', metadata:'Metadata Providers', account:'Account', analytics:'Analytics' }
+          const labels = { overview:'Overview', services:'Services', requests:'Requests', users:'Users', notifications:'Notifications', metadata:'Metadata Providers', account:'Account', analytics:'Analytics' }
           return (
             <button key={t} onClick={() => setTab(t)} style={{
               ...styles.tabBtn,
@@ -341,75 +335,12 @@ export default function Admin() {
         </div>
       )}
 
-      {/* Settings */}
-      {tab === 'administration' && settings && (
+      {/* Services */}
+      {tab === 'services' && settings && (
         <div style={styles.section}>
-          <div style={styles.card}>
-            <h3 style={styles.cardTitle}>Request Types</h3>
-            <p style={styles.cardDesc}>Control what types of music users can request.</p>
-            <div style={styles.toggleGroup}>
-              {[
-                { key: 'allow_artist_requests', label: 'Artist Requests', desc: 'Allow requesting entire artist discographies' },
-                { key: 'allow_album_requests',  label: 'Album Requests',  desc: 'Allow requesting individual albums' },
-                { key: 'allow_track_requests',  label: 'Track Requests',  desc: 'Allow requesting individual tracks' },
-                { key: 'require_approval',       label: 'Require Admin Approval', desc: 'New requests need admin approval before going to Lidarr' },
-                { key: 'auto_approve_plex_users', label: 'Auto-approve Plex Users', desc: 'New Plex users are automatically approved' },
-              ].map(({ key, label, desc }) => (
-                <div key={key} style={styles.toggleRow}>
-                  <div>
-                    <div style={styles.toggleLabel}>{label}</div>
-                    <div style={styles.toggleDesc}>{desc}</div>
-                  </div>
-                  <Toggle
-                    value={settings[key] === 'true'}
-                    onChange={v => setSettings(s => ({ ...s, [key]: String(v) }))}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
 
           <div style={styles.card}>
-            <h3 style={styles.cardTitle}>Request Limits</h3>
-            <p style={styles.cardDesc}>Global defaults. Override per-user in the Users tab. Set to 0 for unlimited.</p>
-
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Global Defaults</div>
-            <div style={styles.fieldGroup}>
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Album requests per window</label>
-                <input
-                  type="number" min="0" max="999"
-                  style={styles.fieldInput}
-                  value={settings.global_album_limit ?? '10'}
-                  onChange={e => setSettings(s => ({ ...s, global_album_limit: e.target.value }))}
-                />
-              </div>
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Track requests per window</label>
-                <input
-                  type="number" min="0" max="999"
-                  style={styles.fieldInput}
-                  value={settings.global_track_limit ?? '20'}
-                  onChange={e => setSettings(s => ({ ...s, global_track_limit: e.target.value }))}
-                />
-              </div>
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Window (days)</label>
-                <input
-                  type="number" min="1" max="365"
-                  style={styles.fieldInput}
-                  value={settings.global_request_limit_days || '7'}
-                  onChange={e => setSettings(s => ({ ...s, global_request_limit_days: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-secondary)', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 7, borderLeft: '2px solid var(--accent)' }}>
-              Artist requests count against the album limit. Per-user overrides can be set individually in the Users tab.
-            </div>
-          </div>
-
-          <div style={styles.card}>
-            <h3 style={styles.cardTitle}>API Keys & Services</h3>
+            <h3 style={styles.cardTitle}>Services & API Keys</h3>
             <p style={styles.cardDesc}>Configure external services. Changes take effect immediately — no restart needed.</p>
 
             {/* Lidarr */}
@@ -499,6 +430,70 @@ export default function Admin() {
           </div>
 
           <button onClick={saveSettings} disabled={saving || !isDirty} style={{ ...styles.saveBtn, opacity: (!isDirty || saving) ? 0.4 : 1, cursor: (!isDirty || saving) ? 'not-allowed' : 'pointer' }}>
+            {saving ? 'Saving…' : 'Save Settings'}
+          </button>
+        </div>
+      )}
+
+      {/* Requests tab */}
+      {tab === 'requests' && settings && (
+        <div style={styles.section}>
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Request Types</h3>
+            <p style={styles.cardDesc}>Control what types of music users can request.</p>
+            <div style={styles.toggleGroup}>
+              {[
+                { key: 'allow_artist_requests',  label: 'Artist Requests',        desc: 'Allow requesting entire artist discographies' },
+                { key: 'allow_album_requests',   label: 'Album Requests',         desc: 'Allow requesting individual albums' },
+                { key: 'allow_track_requests',   label: 'Track Requests',         desc: 'Allow requesting individual tracks' },
+                { key: 'require_approval',       label: 'Require Admin Approval', desc: 'New requests need admin approval before going to Lidarr' },
+                { key: 'auto_approve_plex_users', label: 'Auto-approve Plex Users', desc: 'New Plex users are automatically approved' },
+              ].map(({ key, label, desc }) => (
+                <div key={key} style={styles.toggleRow}>
+                  <div>
+                    <div style={styles.toggleLabel}>{label}</div>
+                    <div style={styles.toggleDesc}>{desc}</div>
+                  </div>
+                  <Toggle
+                    value={settings[key] === 'true'}
+                    onChange={v => setSettings(s => ({ ...s, [key]: String(v) }))}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Request Limits</h3>
+            <p style={styles.cardDesc}>Global defaults. Override per-user in the Users tab. Set to 0 for unlimited.</p>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Global Defaults</div>
+            <div style={styles.fieldGroup}>
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Album requests per window</label>
+                <input type="number" min="0" max="999" style={styles.fieldInput}
+                  value={settings.global_album_limit ?? '10'}
+                  onChange={e => setSettings(s => ({ ...s, global_album_limit: e.target.value }))} />
+              </div>
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Track requests per window</label>
+                <input type="number" min="0" max="999" style={styles.fieldInput}
+                  value={settings.global_track_limit ?? '20'}
+                  onChange={e => setSettings(s => ({ ...s, global_track_limit: e.target.value }))} />
+              </div>
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Window (days)</label>
+                <input type="number" min="1" max="365" style={styles.fieldInput}
+                  value={settings.global_request_limit_days || '7'}
+                  onChange={e => setSettings(s => ({ ...s, global_request_limit_days: e.target.value }))} />
+              </div>
+            </div>
+            <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-secondary)', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 7, borderLeft: '2px solid var(--accent)' }}>
+              Artist requests count against the album limit. Per-user overrides can be set individually in the Users tab.
+            </div>
+          </div>
+
+          <button onClick={saveSettings} disabled={saving || !isDirty}
+            style={{ ...styles.saveBtn, alignSelf: 'flex-start', opacity: (!isDirty || saving) ? 0.4 : 1, cursor: (!isDirty || saving) ? 'not-allowed' : 'pointer' }}>
             {saving ? 'Saving…' : 'Save Settings'}
           </button>
         </div>
@@ -653,33 +648,6 @@ export default function Admin() {
       )}
 
       {/* Requests */}
-      {tab === 'requests' && (
-        <div style={styles.section}>
-          <div style={styles.card}>
-            <h3 style={{ ...styles.cardTitle, marginBottom: '16px' }}>All Requests ({requests.length})</h3>
-            {requests.map(r => (
-              <div key={r.id} style={styles.adminReqRow}>
-                {r.cover_url && <img src={r.cover_url} alt="" style={styles.reqImg} />}
-                <div style={styles.reqInfo}>
-                  <div style={styles.reqTitle}>{r.title}</div>
-                  <div style={styles.reqMeta}>{r.type} · by {r.username} · {new Date(r.created_at).toLocaleDateString()}</div>
-                </div>
-                <StatusBadge status={r.status} size="sm" />
-                <select
-                  style={styles.select}
-                  value={r.status}
-                  onChange={e => updateRequest(r.id, e.target.value)}
-                >
-                  {['pending','approved','found','downloading','downloaded','rejected','unavailable'].map(s => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Notifications tab */}
       {tab === 'notifications' && settings && (
         <div style={styles.section}>
@@ -1539,13 +1507,4 @@ const styles = {
   },
   miniTitle: { flex: 1, fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   miniUser: { fontSize: '12px', color: 'var(--text-muted)', flexShrink: 0 },
-  adminReqRow: {
-    display: 'flex', alignItems: 'center', gap: '12px',
-    padding: '10px 0', borderBottom: '1px solid var(--border)',
-    flexWrap: 'wrap',
-  },
-  reqImg: { width: '40px', height: '40px', borderRadius: 'var(--radius-sm)', objectFit: 'cover', flexShrink: 0 },
-  reqInfo: { flex: 1, minWidth: '120px' },
-  reqTitle: { fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' },
-  reqMeta: { fontSize: '11px', color: 'var(--text-muted)' },
 }
