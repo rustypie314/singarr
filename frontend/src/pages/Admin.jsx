@@ -498,7 +498,7 @@ export default function Admin() {
             </div>
           </div>
 
-          <button onClick={saveSettings} disabled={saving} style={styles.saveBtn}>
+          <button onClick={saveSettings} disabled={saving || !isDirty} style={{ ...styles.saveBtn, opacity: (!isDirty || saving) ? 0.4 : 1, cursor: (!isDirty || saving) ? 'not-allowed' : 'pointer' }}>
             {saving ? 'Saving…' : 'Save Settings'}
           </button>
         </div>
@@ -747,7 +747,7 @@ export default function Admin() {
             </div>
           </div>
 
-          <button onClick={saveSettings} disabled={saving} style={styles.saveBtn}>
+          <button onClick={saveSettings} disabled={saving || !isDirty} style={{ ...styles.saveBtn, opacity: (!isDirty || saving) ? 0.4 : 1, cursor: (!isDirty || saving) ? 'not-allowed' : 'pointer' }}>
             {saving ? 'Saving…' : 'Save Metadata Settings'}
           </button>
         </div>
@@ -1022,7 +1022,7 @@ function NotificationsTab({ api, settings, setSettings, saveSettings, saving }) 
         ℹ Users must have an email address set on their Plex or local account to receive notifications. Make sure each user has an email in <strong style={{ color:'var(--text-primary)' }}>Settings → Users</strong>.
       </div>
 
-      <button onClick={saveSettings} disabled={saving} style={{ ...styles.saveBtn, alignSelf:'flex-start' }}>
+      <button onClick={saveSettings} disabled={saving || !isDirty} style={{ ...styles.saveBtn, alignSelf:'flex-start', opacity: (!isDirty || saving) ? 0.4 : 1, cursor: (!isDirty || saving) ? 'not-allowed' : 'pointer' }}>
         {saving ? 'Saving…' : 'Save Settings'}
       </button>
     </div>
@@ -1034,6 +1034,7 @@ function AccountTab({ api, user }) {
 
   // Display name change
   const [dnValue, setDnValue]       = useState(user?.displayName || '')
+  const dnOriginal                  = user?.displayName || ''
   const [dnSaving, setDnSaving]     = useState(false)
   const [dnSuccess, setDnSuccess]   = useState(false)
   const [dnError, setDnError]       = useState('')
@@ -1137,8 +1138,8 @@ function AccountTab({ api, user }) {
                     ✕ {dnError}
                   </div>
                 )}
-                <button type="submit" disabled={dnSaving}
-                  style={{ ...styles.saveBtn, opacity: dnSaving ? 0.75 : 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button type="submit" disabled={dnSaving || dnValue.trim() === dnOriginal.trim()}
+                  style={{ ...styles.saveBtn, opacity: (dnSaving || dnValue.trim() === dnOriginal.trim()) ? 0.4 : 1, cursor: (dnSaving || dnValue.trim() === dnOriginal.trim()) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
                   {dnSaving ? <><span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />Saving…</> : 'Save display name'}
                 </button>
               </form>
@@ -1192,8 +1193,8 @@ function AccountTab({ api, user }) {
                     ✕ {pwError}
                   </div>
                 )}
-                <button type="submit" disabled={pwSaving}
-                  style={{ ...styles.saveBtn, opacity: pwSaving ? 0.75 : 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button type="submit" disabled={pwSaving || !pwCurrent || !pwNext}
+                  style={{ ...styles.saveBtn, opacity: (pwSaving || !pwCurrent || !pwNext) ? 0.4 : 1, cursor: (pwSaving || !pwCurrent || !pwNext) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
                   {pwSaving ? <><span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />Updating…</> : 'Update password'}
                 </button>
               </form>
