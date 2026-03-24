@@ -1,0 +1,3 @@
+10038	IGNORE	(Content Security Policy - not set yet, common for dev)
+10098	IGNORE	(Cross-Domain Misconfiguration - expected behind reverse proxy)
+10049	IGNORE	(Storable and Cacheable Content - nginx handles caching)

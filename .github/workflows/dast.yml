@@ -1,0 +1,57 @@
+name: DAST — Dynamic Security Analysis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  zap-scan:
+    name: OWASP ZAP Scan
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t singarr-test .
+
+      - name: Start Singarr
+        run: |
+          docker run -d --name singarr-test \
+            -p 8684:8684 \
+            -e JWT_SECRET=ci-testing-secret \
+            singarr-test
+
+      - name: Wait for app to be ready
+        run: |
+          echo "Waiting for Singarr to start..."
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:8684/api/health | grep -q '"status":"ok"'; then
+              echo "App is ready!"
+              exit 0
+            fi
+            echo "Attempt $i/30 — not ready yet..."
+            sleep 2
+          done
+          echo "App failed to start"
+          docker logs singarr-test
+          exit 1
+
+      - name: Run OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: 'http://localhost:8684'
+          rules_file_name: '.github/zap-rules.tsv'
+          cmd_options: '-a -j'
+          allow_issue_writing: true
+          fail_action: false
+
+      - name: Stop container
+        if: always()
+        run: docker stop singarr-test || true
