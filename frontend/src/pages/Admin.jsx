@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
-import { useBlocker } from 'react-router-dom'
+import { useEffect, useState, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { IconRefresh, IconMusicNote, IconDisc, IconMicrophone, IconHeadphones, IconCheck, IconDownload } from '../components/Icons.jsx'
@@ -7,6 +7,8 @@ import toast from 'react-hot-toast'
 
 export default function Admin() {
   const { api, user } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [tab, setTab] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     return params.get('tab') || 'overview'
@@ -196,18 +198,52 @@ export default function Admin() {
 
   const TABS = ['overview', 'administration', 'users', 'requests', 'notifications', 'metadata', 'account', 'analytics']
 
-  // Block navigation when there are unsaved changes
-  const blocker = useBlocker(
-    useCallback(({ currentLocation, nextLocation }) =>
-      isDirty && currentLocation.pathname !== nextLocation.pathname,
-    [isDirty])
-  )
+  const [showDirtyModal, setShowDirtyModal] = useState(false)
+  const pendingNav = useRef(null)
+
+  // Intercept sidebar nav clicks when dirty
+  function guardedNavigate(to) {
+    if (isDirty) {
+      pendingNav.current = () => navigate(to)
+      setShowDirtyModal(true)
+    } else {
+      navigate(to)
+    }
+  }
+
+  // Warn on browser tab close/refresh
+  useEffect(() => {
+    function handleBeforeUnload(e) {
+      if (!isDirty) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isDirty])
+
+  // Intercept clicks on sidebar links when dirty
+  useEffect(() => {
+    if (!isDirty) return
+    function handleClick(e) {
+      const link = e.target.closest('a[href]')
+      if (!link) return
+      const href = link.getAttribute('href')
+      if (!href || href === location.pathname || href.startsWith('http')) return
+      e.preventDefault()
+      e.stopPropagation()
+      pendingNav.current = () => navigate(href)
+      setShowDirtyModal(true)
+    }
+    document.addEventListener('click', handleClick, true)
+    return () => document.removeEventListener('click', handleClick, true)
+  }, [isDirty, location.pathname])
 
   return (
     <div style={styles.root}>
 
       {/* Unsaved changes dialog */}
-      {blocker.state === 'blocked' && (
+      {showDirtyModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 28, maxWidth: 400, width: '100%', boxShadow: '0 32px 64px rgba(0,0,0,0.4)' }}>
             <div style={{ fontSize: 20, marginBottom: 8 }}>⚠️</div>
@@ -216,11 +252,11 @@ export default function Admin() {
               You have unsaved changes in Settings. If you leave now, your changes will be lost.
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => blocker.reset()}
+              <button onClick={() => { setShowDirtyModal(false); pendingNav.current = null }}
                 style={{ flex: 1, padding: 11, background: 'var(--accent)', border: 'none', borderRadius: 'var(--radius-md)', color: '#fff', fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                 Stay
               </button>
-              <button onClick={() => blocker.proceed()}
+              <button onClick={() => { setShowDirtyModal(false); if (pendingNav.current) { pendingNav.current(); pendingNav.current = null } }}
                 style={{ flex: 1, padding: 11, background: 'none', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 'var(--radius-md)', color: '#ef4444', fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                 Leave & Discard
               </button>
