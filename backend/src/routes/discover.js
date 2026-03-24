@@ -5,16 +5,6 @@ const { getDb } = require('../db');
 
 const router = express.Router();
 
-const MB_BASE = 'https://musicbrainz.org/ws/2';
-const MB_HEADERS = { 'User-Agent': 'Singarr/1.0 (music-request-app)' };
-
-async function getCoverArt(mbid) {
-  try {
-    const res = await axios.get(`https://coverartarchive.org/release-group/${mbid}`, { timeout: 4000 });
-    return res.data?.images?.[0]?.thumbnails?.['250'] || res.data?.images?.[0]?.image || null;
-  } catch { return null; }
-}
-
 const CACHE_KEY = 'discover_main';
 const CACHE_TTL_MINUTES = 30;
 
@@ -180,73 +170,6 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
-
-// GET /api/discover/new-releases — recent releases from artists in your Plex library
-router.get('/new-releases', requireAuth, async (req, res) => {
-  try {
-    const db = getDb();
-    // Get artists with MusicBrainz IDs from library
-    const artists = db.prepare(`
-      SELECT title, musicbrainz_id FROM plex_library_cache
-      WHERE type = 'artist' AND musicbrainz_id IS NOT NULL
-      ORDER BY RANDOM() LIMIT 30
-    `).all();
-
-    if (!artists.length) return res.json({ releases: [] });
-
-    // Check last 12 months of releases for a sample of artists (batched to avoid rate limiting)
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    const cutoff = oneYearAgo.toISOString().substring(0, 10);
-
-    const releases = [];
-    for (const artist of artists.slice(0, 15)) {
-      try {
-        const res2 = await axios.get(`${MB_BASE}/release-group`, {
-          params: { artist: artist.musicbrainz_id, limit: 5, fmt: 'json', type: 'album|ep|single' },
-          headers: MB_HEADERS,
-          timeout: 6000,
-        });
-        const groups = res2.data['release-groups'] || [];
-        for (const g of groups) {
-          const date = g['first-release-date'] || '';
-          if (date >= cutoff) {
-            const inPlex = db.prepare(
-              `SELECT id FROM plex_library_cache WHERE type='album' AND LOWER(title)=LOWER(?)`
-            ).get(g.title);
-            releases.push({
-              id: g.id,
-              title: g.title,
-              artistName: artist.title,
-              year: date.substring(0, 4),
-              month: date.substring(0, 7),
-              type: g['primary-type'] || 'Album',
-              coverUrl: null,
-              inPlex: !!inPlex,
-            });
-          }
-        }
-      } catch {}
-    }
-
-    // Sort by date desc, deduplicate, limit 20
-    const seen = new Set();
-    const unique = releases
-      .sort((a, b) => b.month.localeCompare(a.month))
-      .filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; })
-      .slice(0, 20);
-
-    // Fetch cover art for results
-    const withCovers = await Promise.all(unique.map(async r => {
-      const cover = await getCoverArt(r.id).catch(() => null);
-      return { ...r, coverUrl: cover };
-    }));
-
-    res.json({ releases: withCovers });
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to fetch new releases', releases: [] });
-  }
-});
 
 // GET /api/discover/genres — top genres from library artists via Last.fm
 router.get('/genres', requireAuth, (req, res) => {

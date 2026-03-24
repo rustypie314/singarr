@@ -226,8 +226,6 @@ export default function Home() {
   // Discover state
   const [discover, setDiscover]           = useState(null)
   const [discoverLoading, setDiscoverLoading] = useState(true)
-  const [newReleases, setNewReleases]     = useState(null)
-  const [newReleasesLoading, setNewReleasesLoading] = useState(false)
   const [genreFilter, setGenreFilter]     = useState(null)
   const [genres, setGenres]               = useState(null)
   const [genreArtists, setGenreArtists]   = useState([])
@@ -253,15 +251,6 @@ export default function Home() {
   }, [])
 
   // Lazy-load new releases on demand
-  function loadNewReleases() {
-    if (newReleases !== null || newReleasesLoading) return
-    setNewReleasesLoading(true)
-    api.get('/discover/new-releases')
-      .then(r => setNewReleases(r.data.releases || []))
-      .catch(() => setNewReleases([]))
-      .finally(() => setNewReleasesLoading(false))
-  }
-
   // Load genres once discover data is available
   useEffect(() => {
     if (!discover || genres !== null) return
@@ -487,53 +476,6 @@ export default function Home() {
               />
             )}
 
-            {/* New Releases radar */}
-            {!discoverLoading && discover?.artists?.length > 0 && (
-              <div style={{ marginBottom: 32 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>New releases from your library</h2>
-                  {newReleases === null && !newReleasesLoading && (
-                    <button onClick={loadNewReleases}
-                      style={{ fontSize: 12, fontWeight: 600, padding: '5px 14px', background: 'var(--accent-muted)', border: '1px solid var(--accent)', borderRadius: 7, color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
-                      Load
-                    </button>
-                  )}
-                </div>
-                {newReleasesLoading && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 13 }}>
-                    <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.15)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
-                    Checking for new releases…
-                  </div>
-                )}
-                {newReleases !== null && newReleases.length === 0 && (
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No new releases found in the past 12 months.</div>
-                )}
-                {newReleases !== null && newReleases.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {newReleases.map((rel, i) => (
-                      <motion.div key={rel.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: rel.inPlex ? 'rgba(26,122,69,0.06)' : 'var(--bg-elevated)', border: `1px solid ${rel.inPlex ? 'rgba(26,122,69,0.2)' : 'var(--border)'}`, borderRadius: 10 }}>
-                        {rel.coverUrl
-                          ? <img src={rel.coverUrl} alt="" style={{ width: 44, height: 44, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }} />
-                          : <div style={{ width: 44, height: 44, borderRadius: 7, background: 'var(--bg-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>💿</div>
-                        }
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rel.title}</div>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{rel.artistName} · {rel.type} · {rel.month}</div>
-                        </div>
-                        {rel.inPlex
-                          ? <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'rgba(26,122,69,0.15)', color: 'var(--accent)', flexShrink: 0 }}>✓ In Plex</span>
-                          : <button onClick={() => requestItem({ id: rel.id, title: rel.title, artistName: rel.artistName, coverUrl: rel.coverUrl, year: rel.year }, 'album')}
-                              style={{ padding: '5px 12px', background: 'var(--accent-muted)', border: '1px solid var(--accent)', borderRadius: 7, color: 'var(--accent)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0 }}>
-                              Request
-                            </button>
-                        }
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </motion.div>
         )}
 
