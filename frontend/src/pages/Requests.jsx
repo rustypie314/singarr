@@ -126,7 +126,7 @@ export default function Requests() {
 
               {/* Status */}
               <div style={styles.rowStatus}>
-                {req.status === 'downloaded' && req.plex_rating_key && req.quality ? (() => {
+                {req.status === 'downloaded' && req.quality ? (() => {
                   const qualityLabel = req.quality === '24bit-flac' ? '24-bit FLAC'
                                      : req.quality === '16bit-flac' ? '16-bit FLAC'
                                      : req.quality === 'flac'       ? 'FLAC' : null
