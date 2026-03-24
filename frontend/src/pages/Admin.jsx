@@ -353,7 +353,7 @@ export default function Admin() {
               <div style={styles.apiRow}>
                 <div style={{ flex: 1 }}>
                   <label style={styles.fieldLabel}>URL</label>
-                  <input type="text" placeholder="http://192.168.1.100:8686" style={styles.fieldInput}
+                  <input type="text" placeholder="http://your-server:8686" style={styles.fieldInput}
                     value={settings.lidarr_url || ''} onChange={e => setSettings(s => ({ ...s, lidarr_url: e.target.value }))} />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -382,7 +382,7 @@ export default function Admin() {
               <div style={styles.apiRow}>
                 <div style={{ flex: 1 }}>
                   <label style={styles.fieldLabel}>Server URL</label>
-                  <input type="text" placeholder="http://192.168.1.100:32400" style={styles.fieldInput}
+                  <input type="text" placeholder="http://your-server:32400" style={styles.fieldInput}
                     value={settings.plex_url || ''} onChange={e => setSettings(s => ({ ...s, plex_url: e.target.value }))} />
                 </div>
                 <div style={{ flex: 1 }}>

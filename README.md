@@ -112,9 +112,9 @@ Only required if you prefer to configure via environment instead of the UI:
 JWT_SECRET=your_long_random_secret
 
 # Optional — can be set in UI instead
-PLEX_URL=http://192.168.1.100:32400
+PLEX_URL=http://your-plex-server:32400
 PLEX_TOKEN=your_plex_token
-LIDARR_URL=http://192.168.1.100:8686
+LIDARR_URL=http://your-lidarr-server:8686
 LIDARR_API_KEY=your_lidarr_api_key
 LASTFM_API_KEY=your_lastfm_key
 FANART_API_KEY=your_fanart_key
