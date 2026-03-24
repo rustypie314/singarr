@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { TypeIcon, IconRefresh, IconTrash } from '../components/Icons.jsx'
 import toast from 'react-hot-toast'
+import { formatDateShort } from '../utils/date.js'
 
 export default function Requests() {
   const { api, user } = useAuth()
@@ -119,7 +120,7 @@ export default function Requests() {
                     <span style={styles.userTag}>by {req.username}</span>
                   )}
                   <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
-                    {new Date(req.created_at).toLocaleDateString()}
+                    {formatDateShort(req.created_at)}
                   </span>
                 </div>
               </div>

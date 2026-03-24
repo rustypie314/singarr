@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import { useOutletContext } from 'react-router-dom'
 import { IconIssue, IconPlus, IconTrash, IconRefresh } from '../components/Icons.jsx'
 import toast from 'react-hot-toast'
+import { formatDate, formatDateTime } from '../utils/date.js'
 
 const ISSUE_TYPES = [
   { value: 'missing_tracks', label: 'Missing Tracks',      emoji: '🎵' },
@@ -349,9 +350,7 @@ function IssueCard({ issue: initialIssue, index, isAdmin, onUpdateStatus, onDele
   }
 
   function formatTime(dt) {
-    const d = new Date(dt)
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · ' +
-      d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    return formatDateTime(dt)
   }
 
   return (
@@ -371,7 +370,7 @@ function IssueCard({ issue: initialIssue, index, isAdmin, onUpdateStatus, onDele
           <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4, flexWrap:'wrap' }}>
             <span style={{ fontSize:11, color:'var(--accent)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.04em' }}>{typeCfg.label}</span>
             {isAdmin && issue.username && <span style={{ fontSize:11, color:'var(--text-muted)' }}>by {issue.username}</span>}
-            <span style={{ fontSize:11, color:'var(--text-muted)' }}>{new Date(issue.created_at).toLocaleDateString()}</span>
+            <span style={{ fontSize:11, color:'var(--text-muted)' }}>{formatDate(issue.created_at)}</span>
             {issue.request_title && <span style={{ fontSize:11, color:'var(--text-muted)' }}>· {issue.request_title}</span>}
           </div>
         </div>

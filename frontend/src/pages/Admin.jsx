@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { IconRefresh, IconMusicNote, IconDisc, IconMicrophone, IconHeadphones, IconCheck, IconDownload } from '../components/Icons.jsx'
 import toast from 'react-hot-toast'
+import { formatDateShort } from '../utils/date.js'
 
 export default function Admin() {
   const { api, user } = useAuth()
@@ -1240,7 +1241,7 @@ function AnalyticsTab({ analytics, stats }) {
     const d = new Date(); d.setDate(d.getDate() - i)
     const key = d.toISOString().substring(0, 10)
     const found = requestsByDay.find(r => r.day === key)
-    days.push({ day: key, count: found?.count || 0, label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) })
+    days.push({ day: key, count: found?.count || 0, label: formatDateShort(d) })
   }
   const maxCount = Math.max(...days.map(d => d.count), 1)
 
