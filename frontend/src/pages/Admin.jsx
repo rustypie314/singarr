@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { useBlocker } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { IconRefresh, IconMusicNote, IconDisc, IconMicrophone, IconHeadphones, IconCheck, IconDownload } from '../components/Icons.jsx'
@@ -12,6 +13,9 @@ export default function Admin() {
   })
   const [stats, setStats] = useState(null)
   const [settings, setSettings] = useState(null)
+  const savedSettings = useRef(null)
+  const isDirty = settings !== null && savedSettings.current !== null &&
+    JSON.stringify(settings) !== JSON.stringify(savedSettings.current)
   const [users, setUsers] = useState([])
   const [requests, setRequests] = useState([])
   const [saving, setSaving] = useState(false)
@@ -106,7 +110,11 @@ export default function Admin() {
     try { const r = await api.get('/admin/stats'); setStats(r.data) } catch {}
   }
   async function fetchSettings() {
-    try { const r = await api.get('/admin/settings'); setSettings(r.data.settings) } catch {}
+    try {
+      const r = await api.get('/admin/settings')
+      setSettings(r.data.settings)
+      savedSettings.current = r.data.settings
+    } catch {}
   }
   async function fetchUsers() {
     try { const r = await api.get('/admin/users'); setUsers(r.data.users) } catch {}
@@ -119,6 +127,7 @@ export default function Admin() {
     setSaving(true)
     try {
       await api.put('/admin/settings', { settings })
+      savedSettings.current = { ...settings }
       toast.success('Settings saved')
     } catch { toast.error('Failed to save settings') }
     finally { setSaving(false) }
@@ -187,8 +196,39 @@ export default function Admin() {
 
   const TABS = ['overview', 'administration', 'users', 'requests', 'notifications', 'metadata', 'account', 'analytics']
 
+  // Block navigation when there are unsaved changes
+  const blocker = useBlocker(
+    useCallback(({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname,
+    [isDirty])
+  )
+
   return (
     <div style={styles.root}>
+
+      {/* Unsaved changes dialog */}
+      {blocker.state === 'blocked' && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 28, maxWidth: 400, width: '100%', boxShadow: '0 32px 64px rgba(0,0,0,0.4)' }}>
+            <div style={{ fontSize: 20, marginBottom: 8 }}>⚠️</div>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Unsaved changes</h2>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
+              You have unsaved changes in Settings. If you leave now, your changes will be lost.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => blocker.reset()}
+                style={{ flex: 1, padding: 11, background: 'var(--accent)', border: 'none', borderRadius: 'var(--radius-md)', color: '#fff', fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
+                Stay
+              </button>
+              <button onClick={() => blocker.proceed()}
+                style={{ flex: 1, padding: 11, background: 'none', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 'var(--radius-md)', color: '#ef4444', fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
+                Leave & Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={styles.header}>
         <div>
           <h1 style={styles.pageTitle}>Settings</h1>
