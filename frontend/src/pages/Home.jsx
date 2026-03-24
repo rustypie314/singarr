@@ -170,7 +170,19 @@ function RequestCard({ req, plexConfig }) {
       <div style={r.cardTitle}>{req.title}</div>
       <div style={r.cardSub}>{req.artist_name || req.username}</div>
       <div style={{ marginTop: 4 }}>
-        <StatusBadge status={req.status} size="sm" />
+        {req.status === 'downloaded' && req.quality ? (() => {
+          const qualityLabel = req.quality === '24bit-flac' ? '24-bit FLAC'
+                             : req.quality === '16bit-flac' ? '16-bit FLAC'
+                             : req.quality === 'flac'       ? 'FLAC' : null
+          const bg    = req.quality === '24bit-flac' ? 'rgba(24,95,165,0.85)'  : 'rgba(15,110,86,0.85)'
+          const color = req.quality === '24bit-flac' ? '#B5D4F4'               : '#9FE1CB'
+          return qualityLabel
+            ? <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: bg, color, display: 'inline-block' }}>
+                ✓ Downloaded · {qualityLabel}
+              </span>
+            : <StatusBadge status={req.status} size="sm" />
+        })()
+        : <StatusBadge status={req.status} size="sm" />}
       </div>
       {showOpenInPlex && (
         <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
