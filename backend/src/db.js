@@ -85,6 +85,7 @@ function initSchema() {
       artist_name TEXT,
       thumb TEXT,
       quality TEXT,
+      genres TEXT,
       synced_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -193,6 +194,7 @@ function runMigrations() {
   // quality column for existing plex_library_cache
   const plexCols = db.pragma('table_info(plex_library_cache)').map(c => c.name);
   if (!plexCols.includes('quality')) db.exec('ALTER TABLE plex_library_cache ADD COLUMN quality TEXT');
+  if (!plexCols.includes('genres')) db.exec('ALTER TABLE plex_library_cache ADD COLUMN genres TEXT');
 
   // issue_notes table for existing installs
   const tables2 = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);  if (!tables2.includes('issue_notes')) {

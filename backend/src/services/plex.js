@@ -67,8 +67,8 @@ async function syncPlexLibrary() {
     const albums  = albumsRes.data?.MediaContainer?.Metadata  || [];
 
     const insertArtist = db.prepare(`
-      INSERT OR REPLACE INTO plex_library_cache (plex_rating_key, musicbrainz_id, type, title, thumb)
-      VALUES (?, ?, 'artist', ?, ?)
+      INSERT OR REPLACE INTO plex_library_cache (plex_rating_key, musicbrainz_id, type, title, thumb, genres)
+      VALUES (?, ?, 'artist', ?, ?, ?)
     `);
     const insertAlbum = db.prepare(`
       INSERT OR REPLACE INTO plex_library_cache (plex_rating_key, musicbrainz_id, type, title, artist_name, thumb, quality)
@@ -139,8 +139,33 @@ async function syncPlexLibrary() {
       qualities.push(...results);
     }
 
+    // Fetch Last.fm genres for artists in batches of 10
+    const lastfmKey = db.prepare("SELECT value FROM settings WHERE key = 'lastfm_api_key'").get()?.value || process.env.LASTFM_API_KEY;
+    const artistGenres = [];
+    if (lastfmKey) {
+      for (let i = 0; i < artists.length; i += 10) {
+        const batch = artists.slice(i, i + 10);
+        const results = await Promise.all(batch.map(async a => {
+          try {
+            const r = await axios.get('https://ws.audioscrobbler.com/2.0/', {
+              params: { method: 'artist.getinfo', artist: a.title, api_key: lastfmKey, format: 'json' },
+              timeout: 4000,
+            });
+            const tags = r.data?.artist?.tags?.tag || [];
+            return tags.slice(0, 5).map(t => t.name.toLowerCase()).join(',') || null;
+          } catch { return null; }
+        }));
+        artistGenres.push(...results);
+      }
+    } else {
+      artists.forEach(() => artistGenres.push(null));
+    }
+
     const insertAll = db.transaction(() => {
-      for (const a of artists) insertArtist.run(a.ratingKey, extractMbid(a), a.title, a.thumb);
+      for (let i = 0; i < artists.length; i++) {
+        const a = artists[i];
+        insertArtist.run(a.ratingKey, extractMbid(a), a.title, a.thumb, artistGenres[i] || null);
+      }
       for (let i = 0; i < albums.length; i++) {
         const a = albums[i];
         insertAlbum.run(a.ratingKey, extractMbid(a), a.title, a.parentTitle, a.thumb, qualities[i] || null);

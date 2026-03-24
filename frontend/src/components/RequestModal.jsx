@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import toast from 'react-hot-toast'
@@ -6,6 +6,18 @@ import toast from 'react-hot-toast'
 export default function RequestModal({ item, type, onClose, onSuccess }) {
   const { api } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [similar, setSimilar] = useState([])
+
+  useEffect(() => {
+    if (!item) return
+    // Pre-fetch similar artists for artist requests
+    if (type === 'artist' && item.id) {
+      api.get(`/search/artist/${item.id}`, { params: { name: item.name } })
+        .then(r => setSimilar(r.data.similar || []))
+        .catch(() => {})
+    }
+  }, [item?.id])
 
   if (!item) return null
 
@@ -21,7 +33,12 @@ export default function RequestModal({ item, type, onClose, onSuccess }) {
       })
       toast.success('Request submitted!')
       onSuccess?.()
-      onClose()
+      if (type === 'artist' && similar.length > 0) {
+        setSubmitted(true)
+        setLoading(false)
+      } else {
+        onClose()
+      }
     } catch (e) {
       const msg = e.response?.data?.error || 'Request failed'
       if (e.response?.data?.inPlex) {
@@ -29,7 +46,6 @@ export default function RequestModal({ item, type, onClose, onSuccess }) {
       } else {
         toast.error(msg)
       }
-    } finally {
       setLoading(false)
     }
   }
@@ -62,32 +78,54 @@ export default function RequestModal({ item, type, onClose, onSuccess }) {
           )}
 
           <div style={styles.body}>
-            <div style={styles.typeTag}>{type}</div>
-            <h2 style={styles.title}>{title}</h2>
-            {item.artistName && type !== 'artist' && (
-              <p style={styles.artist}>{item.artistName}</p>
-            )}
-            {item.year && <p style={styles.meta}>{item.year}</p>}
-            {item.disambiguation && (
-              <p style={styles.meta}>{item.disambiguation}</p>
-            )}
+            {!submitted ? (
+              <>
+                <div style={styles.typeTag}>{type}</div>
+                <h2 style={styles.title}>{title}</h2>
+                {item.artistName && type !== 'artist' && (
+                  <p style={styles.artist}>{item.artistName}</p>
+                )}
+                {item.year && <p style={styles.meta}>{item.year}</p>}
+                {item.disambiguation && (
+                  <p style={styles.meta}>{item.disambiguation}</p>
+                )}
 
-            <p style={styles.confirmText}>
-              Send this {type} to Lidarr for acquisition?
-            </p>
+                <p style={styles.confirmText}>
+                  Send this {type} to Lidarr for acquisition?
+                </p>
 
-            <div style={styles.actions}>
-              <button onClick={onClose} style={styles.cancelBtn}>Cancel</button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleRequest}
-                disabled={loading}
-                style={{ ...styles.confirmBtn, opacity: loading ? 0.7 : 1 }}
-              >
-                {loading ? 'Requesting…' : 'Request'}
-              </motion.button>
-            </div>
+                <div style={styles.actions}>
+                  <button onClick={onClose} style={styles.cancelBtn}>Cancel</button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleRequest}
+                    disabled={loading}
+                    style={{ ...styles.confirmBtn, opacity: loading ? 0.7 : 1 }}
+                  >
+                    {loading ? 'Requesting…' : 'Request'}
+                  </motion.button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                  <span style={{ fontSize: 20 }}>✓</span>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--accent)' }}>Request submitted!</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>You might also like these similar artists:</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+                  {similar.map((name, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-overlay)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{name}</span>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={onClose} style={{ ...styles.confirmBtn, width: '100%' }}>Done</button>
+              </>
+            )}
           </div>
         </motion.div>
       </motion.div>

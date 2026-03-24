@@ -143,7 +143,47 @@ router.get('/stats', requireAdmin, (req, res) => {
     SELECT r.*, u.username FROM requests r JOIN users u ON r.user_id = u.id
     ORDER BY r.created_at DESC LIMIT 5
   `).all();
-  res.json({ totalRequests, pendingRequests, downloadedRequests, totalUsers, plexCacheCount, recentRequests });
+
+  // Analytics data
+  const requestsByDay = db.prepare(`
+    SELECT DATE(created_at) as day, COUNT(*) as count
+    FROM requests
+    WHERE created_at >= DATE('now', '-30 days')
+    GROUP BY DATE(created_at)
+    ORDER BY day ASC
+  `).all();
+
+  const requestsByType = db.prepare(`
+    SELECT type, COUNT(*) as count FROM requests GROUP BY type
+  `).all();
+
+  const requestsByStatus = db.prepare(`
+    SELECT status, COUNT(*) as count FROM requests GROUP BY status
+  `).all();
+
+  const topRequesters = db.prepare(`
+    SELECT u.username, u.avatar, COUNT(r.id) as count
+    FROM requests r JOIN users u ON r.user_id = u.id
+    GROUP BY r.user_id ORDER BY count DESC LIMIT 5
+  `).all();
+
+  const topArtists = db.prepare(`
+    SELECT artist_name, COUNT(*) as count
+    FROM requests
+    WHERE artist_name IS NOT NULL AND artist_name != ''
+    GROUP BY LOWER(artist_name)
+    ORDER BY count DESC LIMIT 5
+  `).all();
+
+  const avgPerDay = db.prepare(`
+    SELECT ROUND(COUNT(*) * 1.0 / MAX(1, JULIANDAY('now') - JULIANDAY(MIN(created_at))), 1) as avg
+    FROM requests
+  `).get().avg || 0;
+
+  res.json({
+    totalRequests, pendingRequests, downloadedRequests, totalUsers, plexCacheCount, recentRequests,
+    analytics: { requestsByDay, requestsByType, requestsByStatus, topRequesters, topArtists, avgPerDay },
+  });
 });
 
 module.exports = router;

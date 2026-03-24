@@ -185,7 +185,7 @@ export default function Admin() {
     }
   }
 
-  const TABS = ['overview', 'administration', 'users', 'requests', 'notifications', 'metadata', 'account']
+  const TABS = ['overview', 'administration', 'users', 'requests', 'notifications', 'metadata', 'account', 'analytics']
 
   return (
     <div style={styles.root}>
@@ -199,7 +199,7 @@ export default function Admin() {
       {/* Tabs */}
       <div style={styles.tabBar}>
         {TABS.map(t => {
-          const labels = { overview:'Overview', administration:'Administration', users:'Users', requests:'Requests', notifications:'Notifications', metadata:'Metadata Providers', account:'Account' }
+          const labels = { overview:'Overview', administration:'Administration', users:'Users', requests:'Requests', notifications:'Notifications', metadata:'Metadata Providers', account:'Account', analytics:'Analytics' }
           return (
             <button key={t} onClick={() => setTab(t)} style={{
               ...styles.tabBtn,
@@ -681,6 +681,12 @@ export default function Admin() {
       {tab === 'account' && (
         <div style={styles.section}>
           <AccountTab api={api} user={user} />
+        </div>
+      )}
+
+      {tab === 'analytics' && stats && (
+        <div style={styles.section}>
+          <AnalyticsTab analytics={stats.analytics} stats={stats} />
         </div>
       )}
 
@@ -1174,6 +1180,129 @@ function Toggle({ value, onChange, label }) {
           boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
         }} />
       </button>
+    </div>
+  )
+}
+
+function AnalyticsTab({ analytics, stats }) {
+  if (!analytics) return <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>No data yet.</div>
+
+  const { requestsByDay, requestsByType, requestsByStatus, topRequesters, topArtists, avgPerDay } = analytics
+
+  // Build last 30 days chart data — fill in missing days with 0
+  const days = []
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i)
+    const key = d.toISOString().substring(0, 10)
+    const found = requestsByDay.find(r => r.day === key)
+    days.push({ day: key, count: found?.count || 0, label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) })
+  }
+  const maxCount = Math.max(...days.map(d => d.count), 1)
+
+  const statusColors = { pending: '#e8a30f', approved: '#4f9cf9', found: '#a78bfa', downloading: '#f97316', downloaded: '#2dbe6c', rejected: '#ef4444' }
+  const typeColors = { album: '#2dbe6c', artist: '#4f9cf9', track: '#e8a30f' }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Summary cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+        {[
+          { label: 'Total Requests', value: stats.totalRequests },
+          { label: 'Downloaded', value: stats.downloadedRequests },
+          { label: 'Pending', value: stats.pendingRequests },
+          { label: 'Avg / Day', value: avgPerDay },
+        ].map(c => (
+          <div key={c.label} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{c.label}</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)' }}>{c.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Requests over 30 days bar chart */}
+      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14 }}>Requests — last 30 days</div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 80 }}>
+          {days.map((d, i) => (
+            <div key={i} title={`${d.label}: ${d.count}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, height: '100%', justifyContent: 'flex-end' }}>
+              <div style={{ width: '100%', borderRadius: 3, background: d.count > 0 ? 'var(--accent)' : 'var(--bg-overlay)', height: `${Math.max(4, (d.count / maxCount) * 100)}%`, transition: 'height 300ms', minHeight: d.count > 0 ? 6 : 3 }} />
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{days[0]?.label}</span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{days[days.length - 1]?.label}</span>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+
+        {/* By type */}
+        <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>By type</div>
+          {requestsByType.map(r => (
+            <div key={r.type} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: 999, background: typeColors[r.type] || 'var(--accent)', flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', flex: 1, textTransform: 'capitalize' }}>{r.type}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{r.count}</span>
+              <div style={{ width: 60, height: 4, borderRadius: 2, background: 'var(--bg-overlay)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 2, background: typeColors[r.type] || 'var(--accent)', width: `${(r.count / stats.totalRequests) * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* By status */}
+        <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>By status</div>
+          {requestsByStatus.map(r => (
+            <div key={r.status} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: 999, background: statusColors[r.status] || 'var(--accent)', flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', flex: 1, textTransform: 'capitalize' }}>{r.status}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{r.count}</span>
+              <div style={{ width: 60, height: 4, borderRadius: 2, background: 'var(--bg-overlay)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 2, background: statusColors[r.status] || 'var(--accent)', width: `${(r.count / stats.totalRequests) * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Top requesters */}
+        <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Top requesters</div>
+          {topRequesters.length === 0
+            ? <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No data yet</div>
+            : topRequesters.map((r, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', width: 16, textAlign: 'right', flexShrink: 0 }}>#{i + 1}</span>
+                {r.avatar
+                  ? <img src={r.avatar} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                  : <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{r.username?.[0]?.toUpperCase()}</div>
+                }
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)', flex: 1 }}>{r.username}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{r.count}</span>
+              </div>
+            ))
+          }
+        </div>
+
+        {/* Top artists */}
+        <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Most requested artists</div>
+          {topArtists.length === 0
+            ? <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No data yet</div>
+            : topArtists.map((r, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', width: 16, textAlign: 'right', flexShrink: 0 }}>#{i + 1}</span>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.artist_name}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{r.count}</span>
+              </div>
+            ))
+          }
+        </div>
+
+      </div>
     </div>
   )
 }
