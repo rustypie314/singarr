@@ -6,6 +6,20 @@ Singarr is an Overseerr-style music request app for Plex + Lidarr. Users log in 
 
 ---
 
+## Screenshots
+
+![Login](screenshots/login.png)
+
+![Discover](screenshots/discover.png)
+
+![Settings Overview](screenshots/admin.png)
+
+![Settings Administration](screenshots/settings.png)
+
+![Analytics](screenshots/analytics.png)
+
+---
+
 ## Features
 
 ### Core
