@@ -63,7 +63,6 @@ router.get('/library', requireAuth, (req, res) => {
 // No auth required — img tags can't send headers; domain allowlist is the security boundary
 router.get('/cover', async (req, res) => {
   const { url } = req.query;
-  console.log(`[Cover proxy] Request for: ${url}`);
   if (!url) return res.status(400).send('Missing url');
 
   // Only allow known safe image domains (including archive.org subdomains)
