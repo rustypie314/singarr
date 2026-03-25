@@ -65,22 +65,29 @@ router.get('/cover', requireAuth, async (req, res) => {
   if (!url) return res.status(400).send('Missing url');
 
   // Only allow known safe image domains (including archive.org subdomains)
-  const allowed = ['coverartarchive.org', 'archive.org', 'lastfm.freetls.fastly.net', 'fanart.tv', 'assets.fanart.tv', 'ws.audioscrobbler.com'];
+  const allowed = ['coverartarchive.org', 'archive.org', 'lastfm.freetls.fastly.net', 'fanart.tv', 'assets.fanart.tv'];
   let hostname;
   try { hostname = new URL(url).hostname; } catch { return res.status(400).send('Invalid url'); }
-  if (!allowed.some(d => hostname === d || hostname.endsWith('.' + d))) return res.status(403).send('Domain not allowed');
+  if (!allowed.some(d => hostname === d || hostname.endsWith('.' + d))) {
+    console.warn(`[Cover proxy] Blocked domain: ${hostname}`);
+    return res.status(403).send('Domain not allowed');
+  }
 
   try {
     const response = await axios.get(url, {
       responseType: 'stream',
       timeout: 10000,
-      maxRedirects: 5,
-      headers: { 'User-Agent': 'Singarr/1.0' },
+      maxRedirects: 10,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; Singarr/1.0)',
+        'Accept': 'image/*,*/*',
+      },
     });
     res.setHeader('Cache-Control', 'public, max-age=604800');
     res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
     response.data.pipe(res);
-  } catch {
+  } catch (e) {
+    console.warn(`[Cover proxy] Failed to fetch ${url}: ${e.message}`);
     res.status(204).send();
   }
 });
