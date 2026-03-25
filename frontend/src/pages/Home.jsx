@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import RequestModal from '../components/RequestModal.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
+import { proxyCover } from '../utils/date.js'
 import LimitBar from '../components/LimitBar.jsx'
 import { IconMicrophone, IconDisc, IconMusicNote, IconSearch, IconPlus, IconDownload, IconRefresh } from '../components/Icons.jsx'
 import { TypeIcon } from '../components/Icons.jsx'
@@ -157,8 +158,8 @@ function RequestCard({ req, plexConfig }) {
   return (
     <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.15 }} style={r.card}>
       <div style={{ ...r.cardArt, borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
-        {req.cover_url && !imgError
-          ? <img src={req.cover_url} alt={req.title}
+        {proxyCover(req.cover_url) && !imgError
+          ? <img src={proxyCover(req.cover_url)} alt={req.title}
               style={{ ...r.cardImg, opacity: imgLoaded ? 1 : 0, borderRadius: 10 }}
               onLoad={() => setImgLoaded(true)} onError={() => setImgError(true)} loading="lazy" />
           : <div style={{ ...r.cardFallback, borderRadius: 10,

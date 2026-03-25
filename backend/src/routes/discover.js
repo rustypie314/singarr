@@ -43,7 +43,30 @@ async function lastfmAlbumImage(albumTitle, artistName, apiKey) {
   } catch { return null; }
 }
 
-function readCache() {
+function getRecentRequests() {
+  const db = getDb();
+  const recentRequests = db.prepare(`
+    SELECT r.id, r.type, r.title, r.artist_name, r.cover_url, r.status, r.created_at,
+           u.username, u.avatar
+    FROM requests r
+    JOIN users u ON r.user_id = u.id
+    WHERE r.status != 'rejected'
+    ORDER BY r.created_at DESC
+    LIMIT 20
+  `).all();
+
+  const plexLookup = db.prepare(`
+    SELECT plex_rating_key, quality FROM plex_library_cache
+    WHERE type = 'album' AND LOWER(title) = LOWER(?) AND (? IS NULL OR ? = '' OR LOWER(artist_name) = LOWER(?))
+    LIMIT 1
+  `);
+
+  return recentRequests.map(req => {
+    if (req.status !== 'downloaded' || req.type !== 'album') return req;
+    const plexItem = plexLookup.get(req.title, req.artist_name, req.artist_name, req.artist_name);
+    return plexItem ? { ...req, plex_rating_key: plexItem.plex_rating_key, quality: plexItem.quality } : req;
+  });
+}
   try {
     const db = getDb();
     const row = db.prepare('SELECT data, fetched_at FROM discovery_cache WHERE key = ?').get(CACHE_KEY);
@@ -77,28 +100,6 @@ async function buildDiscoverData() {
     WHERE type = 'album' ORDER BY RANDOM() LIMIT 20
   `).all();
 
-  const recentRequests = db.prepare(`
-    SELECT r.id, r.type, r.title, r.artist_name, r.cover_url, r.status, r.created_at,
-           u.username, u.avatar
-    FROM requests r
-    JOIN users u ON r.user_id = u.id
-    WHERE r.status != 'rejected'
-    ORDER BY r.created_at DESC
-    LIMIT 20
-  `).all();
-
-  // For downloaded requests, look up plex_rating_key from library cache
-  const plexLookup = db.prepare(`
-    SELECT plex_rating_key, quality FROM plex_library_cache
-    WHERE type = 'album' AND LOWER(title) = LOWER(?) AND (? IS NULL OR ? = '' OR LOWER(artist_name) = LOWER(?))
-    LIMIT 1
-  `);
-  const enrichedRequests = recentRequests.map(req => {
-    if (req.status !== 'downloaded' || req.type !== 'album') return req;
-    const plexItem = plexLookup.get(req.title, req.artist_name, req.artist_name, req.artist_name);
-    return plexItem ? { ...req, plex_rating_key: plexItem.plex_rating_key, quality: plexItem.quality } : req;
-  });
-
   const totalArtists = db.prepare("SELECT COUNT(*) as c FROM plex_library_cache WHERE type = 'artist'").get().c;
   const totalAlbums  = db.prepare("SELECT COUNT(*) as c FROM plex_library_cache WHERE type = 'album'").get().c;
   const lastSync     = db.prepare('SELECT MAX(synced_at) as t FROM plex_library_cache').get().t;
@@ -130,7 +131,7 @@ async function buildDiscoverData() {
     }));
   }
 
-  return { artists, albums, recentRequests: enrichedRequests, stats: { totalArtists, totalAlbums, lastSync } };
+  return { artists, albums, stats: { totalArtists, totalAlbums, lastSync } };
 }
 
 // GET /api/discover
@@ -146,7 +147,7 @@ router.get('/', requireAuth, async (req, res) => {
   // Try cache first — respond instantly if fresh
   const cached = readCache();
   if (cached) {
-    res.json({ ...cached, plexConfig });
+    res.json({ ...cached, recentRequests: getRecentRequests(), plexConfig });
     // Refresh in background if cache is older than half the TTL
     const row = db.prepare('SELECT fetched_at FROM discovery_cache WHERE key = ?').get(CACHE_KEY);
     const ageMinutes = row ? (Date.now() - new Date(row.fetched_at).getTime()) / 60000 : CACHE_TTL_MINUTES;
@@ -164,7 +165,7 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const data = await buildDiscoverData();
     writeCache(data);
-    res.json({ ...data, plexConfig });
+    res.json({ ...data, recentRequests: getRecentRequests(), plexConfig });
   } catch (e) {
     res.status(500).json({ error: 'Failed to load discover data' });
   }

@@ -29,3 +29,10 @@ export function formatDateShort(dateStr) {
     timeZone: TZ, month: 'short', day: 'numeric',
   })
 }
+
+// Route external cover art URLs through the backend proxy to avoid CORS issues
+export function proxyCover(url) {
+  if (!url) return null
+  if (url.startsWith('/api/')) return url // already a proxy URL
+  return `/api/plex/cover?url=${encodeURIComponent(url)}`
+}

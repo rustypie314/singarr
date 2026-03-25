@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { TypeIcon, IconRefresh, IconTrash } from '../components/Icons.jsx'
 import toast from 'react-hot-toast'
-import { formatDateShort } from '../utils/date.js'
+import { formatDateShort, proxyCover } from '../utils/date.js'
 
 export default function Requests() {
   const { api, user } = useAuth()
@@ -97,8 +97,8 @@ export default function Requests() {
             >
               {/* Art / Type icon */}
               <div style={styles.rowArt}>
-                {req.cover_url
-                  ? <img src={req.cover_url} alt="" style={styles.rowImg} />
+                {proxyCover(req.cover_url)
+                  ? <img src={proxyCover(req.cover_url)} alt="" style={styles.rowImg} />
                   : <div style={styles.rowIconWrap}>
                       <TypeIcon type={req.type} size={22} color="var(--accent)" />
                     </div>

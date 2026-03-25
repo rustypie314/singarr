@@ -59,4 +59,29 @@ router.get('/library', requireAuth, (req, res) => {
   res.json({ artists, albums, lastSync });
 });
 
+// Cover art proxy — fetches external cover images server-side to avoid CORS/hotlink issues
+router.get('/cover', requireAuth, async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).send('Missing url');
+
+  // Only allow known safe image domains
+  const allowed = ['coverartarchive.org', 'archive.org', 'lastfm.freetls.fastly.net', 'fanart.tv', 'assets.fanart.tv'];
+  let hostname;
+  try { hostname = new URL(url).hostname; } catch { return res.status(400).send('Invalid url'); }
+  if (!allowed.some(d => hostname.endsWith(d))) return res.status(403).send('Domain not allowed');
+
+  try {
+    const response = await axios.get(url, {
+      responseType: 'stream',
+      timeout: 8000,
+      headers: { 'User-Agent': 'Singarr/1.0' },
+    });
+    res.setHeader('Cache-Control', 'public, max-age=604800');
+    res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
+    response.data.pipe(res);
+  } catch {
+    res.status(204).send();
+  }
+});
+
 module.exports = router;
