@@ -7,8 +7,8 @@ const { getDb } = require('../db');
 const router = express.Router();
 
 // Image proxy — fetches Plex thumbnails server-side and pipes them to the browser
-// Usage: /api/plex/thumb?path=/library/metadata/123/thumb/456
-router.get('/thumb', requireAuth, async (req, res) => {
+// No auth required — img tags can't send headers; domain allowlist is the security boundary
+router.get('/thumb', async (req, res) => {
   const { path: thumbPath } = req.query;
   if (!thumbPath) return res.status(400).send('Missing path');
 
@@ -60,7 +60,8 @@ router.get('/library', requireAuth, (req, res) => {
 });
 
 // Cover art proxy — fetches external cover images server-side to avoid CORS/hotlink issues
-router.get('/cover', requireAuth, async (req, res) => {
+// No auth required — img tags can't send headers; domain allowlist is the security boundary
+router.get('/cover', async (req, res) => {
   const { url } = req.query;
   console.log(`[Cover proxy] Request for: ${url}`);
   if (!url) return res.status(400).send('Missing url');
