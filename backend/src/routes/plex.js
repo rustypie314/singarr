@@ -64,16 +64,17 @@ router.get('/cover', requireAuth, async (req, res) => {
   const { url } = req.query;
   if (!url) return res.status(400).send('Missing url');
 
-  // Only allow known safe image domains
-  const allowed = ['coverartarchive.org', 'archive.org', 'lastfm.freetls.fastly.net', 'fanart.tv', 'assets.fanart.tv'];
+  // Only allow known safe image domains (including archive.org subdomains)
+  const allowed = ['coverartarchive.org', 'archive.org', 'lastfm.freetls.fastly.net', 'fanart.tv', 'assets.fanart.tv', 'ws.audioscrobbler.com'];
   let hostname;
   try { hostname = new URL(url).hostname; } catch { return res.status(400).send('Invalid url'); }
-  if (!allowed.some(d => hostname.endsWith(d))) return res.status(403).send('Domain not allowed');
+  if (!allowed.some(d => hostname === d || hostname.endsWith('.' + d))) return res.status(403).send('Domain not allowed');
 
   try {
     const response = await axios.get(url, {
       responseType: 'stream',
-      timeout: 8000,
+      timeout: 10000,
+      maxRedirects: 5,
       headers: { 'User-Agent': 'Singarr/1.0' },
     });
     res.setHeader('Cache-Control', 'public, max-age=604800');

@@ -34,5 +34,7 @@ export function formatDateShort(dateStr) {
 export function proxyCover(url) {
   if (!url) return null
   if (url.startsWith('/api/')) return url // already a proxy URL
-  return `/api/plex/cover?url=${encodeURIComponent(url)}`
+  // Ensure https
+  const safeUrl = url.replace(/^http:\/\//, 'https://')
+  return `/api/plex/cover?url=${encodeURIComponent(safeUrl)}`
 }
