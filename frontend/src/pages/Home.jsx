@@ -88,7 +88,7 @@ function LibraryCard({ item, type, plexConfig }) {
   const detailPath = ratingKey && machineId ? `#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${ratingKey}` : null
   const webLink   = detailPath ? `https://app.plex.tv/desktop/${detailPath}` : null
   const localLink = detailPath && localUrl ? `${localUrl}/web/index.html${detailPath}` : null
-  const showOpenInPlex = !isArtist && detailPath && (openMode === 'web' || openMode === 'local' || openMode === 'both')
+  const showOpenInPlex = detailPath && (openMode === 'web' || openMode === 'local' || openMode === 'both')
 
   return (
     <motion.div
@@ -458,7 +458,7 @@ export default function Home() {
                 loading={discoverLoading || genreLoading}
                 emptyMsg={genreFilter ? `No ${genreFilter} artists in your library` : 'No artists in your Plex library yet'}
                 renderCard={(item, i) => (
-                  <LibraryCard key={item.plex_rating_key || i} item={item} type="artist" />
+                  <LibraryCard key={item.plex_rating_key || i} item={item} type="artist" plexConfig={discover?.plexConfig} />
                 )}
               />
             )}
