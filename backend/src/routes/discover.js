@@ -67,6 +67,8 @@ function getRecentRequests() {
     return plexItem ? { ...req, plex_rating_key: plexItem.plex_rating_key, quality: plexItem.quality } : req;
   });
 }
+
+function readCache() {
   try {
     const db = getDb();
     const row = db.prepare('SELECT data, fetched_at FROM discovery_cache WHERE key = ?').get(CACHE_KEY);
