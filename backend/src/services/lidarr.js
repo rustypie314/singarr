@@ -82,8 +82,16 @@ async function addAlbumToLidarr(mbid) {
     if (!profiles.data.length) throw new Error('No quality profiles configured in Lidarr');
     if (!rootFolders.data.length) throw new Error('No root folders configured in Lidarr');
 
+    // Do a proper artist lookup to get the full object Lidarr expects
+    const artistMbid = album.artist?.foreignArtistId;
+    if (!artistMbid) throw new Error('Could not determine artist MusicBrainz ID from album lookup');
+
+    const artistLookup = await client.get('/artist/lookup', { params: { term: `lidarr:${artistMbid}` } });
+    if (!artistLookup.data?.length) throw new Error('Artist not found in Lidarr lookup');
+    const artistData = artistLookup.data[0];
+
     const newArtistRes = await client.post('/artist', {
-      ...album.artist,
+      ...artistData,
       qualityProfileId: profiles.data[0].id,
       rootFolderPath: rootFolders.data[0].path,
       monitored: true,
