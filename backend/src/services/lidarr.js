@@ -79,23 +79,58 @@ async function addAlbumToLidarr(mbid) {
       client.get('/qualityprofile'),
       client.get('/rootfolder'),
     ]);
-    const newArtist = await client.post('/artist', {
+    if (!profiles.data.length) throw new Error('No quality profiles configured in Lidarr');
+    if (!rootFolders.data.length) throw new Error('No root folders configured in Lidarr');
+
+    const newArtistRes = await client.post('/artist', {
       ...album.artist,
       qualityProfileId: profiles.data[0].id,
       rootFolderPath: rootFolders.data[0].path,
       monitored: true,
       addOptions: { monitor: 'none', searchForMissingAlbums: false },
     });
-    artistId = newArtist.data.id;
+    artistId = newArtistRes.data.id;
+
+    // Wait for Lidarr to index the artist's albums (retry up to 10s)
+    let lidarrAlbum = null;
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      const albums = await client.get('/album', { params: { artistId } }).then(r => r.data).catch(() => []);
+      lidarrAlbum = albums.find(a => a.foreignAlbumId === mbid);
+      if (lidarrAlbum) break;
+    }
+
+    if (!lidarrAlbum) throw new Error('Album not found in Lidarr after artist was added — try again in a moment');
+
+    await client.put('/album/monitor', { albumIds: [lidarrAlbum.id], monitored: true }).catch(() => null);
+    await client.post('/command', { name: 'AlbumSearch', albumIds: [lidarrAlbum.id] }).catch(() => null);
+
+    return { ...lidarrAlbum, artistId };
   } else {
     artistId = existingArtist.id;
+
+    // Artist already exists — find album directly from Lidarr's index
+    const albums = await client.get('/album', { params: { artistId } }).then(r => r.data).catch(() => []);
+    const lidarrAlbum = albums.find(a => a.foreignAlbumId === mbid);
+
+    if (lidarrAlbum) {
+      await client.put('/album/monitor', { albumIds: [lidarrAlbum.id], monitored: true }).catch(() => null);
+      await client.post('/command', { name: 'AlbumSearch', albumIds: [lidarrAlbum.id] }).catch(() => null);
+      return { ...lidarrAlbum, artistId };
+    } else {
+      // Album not yet indexed — trigger a refresh then search
+      await client.post('/command', { name: 'RefreshArtist', artistId }).catch(() => null);
+      await new Promise(r => setTimeout(r, 3000));
+      const refreshedAlbums = await client.get('/album', { params: { artistId } }).then(r => r.data).catch(() => []);
+      const refreshedAlbum = refreshedAlbums.find(a => a.foreignAlbumId === mbid);
+      if (refreshedAlbum) {
+        await client.put('/album/monitor', { albumIds: [refreshedAlbum.id], monitored: true }).catch(() => null);
+        await client.post('/command', { name: 'AlbumSearch', albumIds: [refreshedAlbum.id] }).catch(() => null);
+        return { ...refreshedAlbum, artistId };
+      }
+      return { ...album, artistId };
+    }
   }
-
-  // Monitor and search the album
-  await client.put('/album/monitor', { albumIds: [album.id], monitored: true }).catch(() => null);
-  await client.post('/command', { name: 'AlbumSearch', albumIds: [album.id] }).catch(() => null);
-
-  return { ...album, artistId };
 }
 
 async function syncLidarrStatuses() {
