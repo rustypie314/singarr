@@ -21,7 +21,7 @@ function lidarrClient() {
   return axios.create({
     baseURL: `${url}/api/v1`,
     headers: { 'X-Api-Key': key },
-    timeout: 10000,
+    timeout: 30000,
   });
 }
 
@@ -93,9 +93,11 @@ async function addAlbumToLidarr(mbid) {
 
     // Wait for Lidarr to index the artist's albums (retry up to 10s)
     let lidarrAlbum = null;
+    console.log(`[Lidarr] Artist added (id=${artistId}), waiting for albums to index...`);
     for (let i = 0; i < 10; i++) {
       await new Promise(r => setTimeout(r, 1000));
       const albums = await client.get('/album', { params: { artistId } }).then(r => r.data).catch(() => []);
+      console.log(`[Lidarr] Poll ${i + 1}: found ${albums.length} albums`);
       lidarrAlbum = albums.find(a => a.foreignAlbumId === mbid);
       if (lidarrAlbum) break;
     }
