@@ -40,17 +40,20 @@ async function addArtistToLidarr(mbid, artistName) {
 
   if (existing) return existing;
 
-  const [profiles, rootFolders] = await Promise.all([
+  const [profiles, rootFolders, metadataProfiles] = await Promise.all([
     client.get('/qualityprofile'),
     client.get('/rootfolder'),
+    client.get('/metadataprofile'),
   ]);
 
   if (!profiles.data.length) throw new Error('No quality profiles configured in Lidarr');
   if (!rootFolders.data.length) throw new Error('No root folders configured in Lidarr');
+  if (!metadataProfiles.data.length) throw new Error('No metadata profiles configured in Lidarr');
 
   const payload = {
     ...artist,
     qualityProfileId: profiles.data[0].id,
+    metadataProfileId: metadataProfiles.data[0].id,
     rootFolderPath: rootFolders.data[0].path,
     monitored: true,
     addOptions: { monitor: 'all', searchForMissingAlbums: true },
@@ -75,12 +78,14 @@ async function addAlbumToLidarr(mbid) {
 
   let artistId;
   if (!existingArtist) {
-    const [profiles, rootFolders] = await Promise.all([
+    const [profiles, rootFolders, metadataProfiles] = await Promise.all([
       client.get('/qualityprofile'),
       client.get('/rootfolder'),
+      client.get('/metadataprofile'),
     ]);
     if (!profiles.data.length) throw new Error('No quality profiles configured in Lidarr');
     if (!rootFolders.data.length) throw new Error('No root folders configured in Lidarr');
+    if (!metadataProfiles.data.length) throw new Error('No metadata profiles configured in Lidarr');
 
     // Do a proper artist lookup to get the full object Lidarr expects
     const artistMbid = album.artist?.foreignArtistId;
@@ -93,6 +98,7 @@ async function addAlbumToLidarr(mbid) {
     const newArtistRes = await client.post('/artist', {
       ...artistData,
       qualityProfileId: profiles.data[0].id,
+      metadataProfileId: metadataProfiles.data[0].id,
       rootFolderPath: rootFolders.data[0].path,
       monitored: true,
       addOptions: { monitor: 'none', searchForMissingAlbums: false },
