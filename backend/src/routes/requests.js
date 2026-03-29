@@ -156,7 +156,8 @@ async function sendToLidarr(requestId, type, musicbrainzId, title, artistName) {
     db.prepare('UPDATE requests SET lidarr_id = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
       .run(lidarrId, 'found', requestId);
   } catch (e) {
-    console.error(`Lidarr submission failed for request ${requestId}:`, e.message);
+    const detail = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+    console.error(`Lidarr submission failed for request ${requestId}: ${detail}`);
     db.prepare('UPDATE requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
       .run('unavailable', requestId);
   }
