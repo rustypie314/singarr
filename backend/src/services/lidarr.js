@@ -118,7 +118,6 @@ async function addAlbumToLidarr(mbid) {
 
     if (!lidarrAlbum) throw new Error('Album not found in Lidarr after artist was added — try again in a moment');
 
-    await client.put('/album/monitor', { albumIds: [lidarrAlbum.id], monitored: true }).catch(() => null);
     await client.post('/command', { name: 'AlbumSearch', albumIds: [lidarrAlbum.id] }).catch(() => null);
 
     return { ...lidarrAlbum, artistId };
@@ -130,7 +129,6 @@ async function addAlbumToLidarr(mbid) {
     const lidarrAlbum = albums.find(a => a.foreignAlbumId === mbid);
 
     if (lidarrAlbum) {
-      await client.put('/album/monitor', { albumIds: [lidarrAlbum.id], monitored: true }).catch(() => null);
       await client.post('/command', { name: 'AlbumSearch', albumIds: [lidarrAlbum.id] }).catch(() => null);
       return { ...lidarrAlbum, artistId };
     } else {
@@ -140,7 +138,6 @@ async function addAlbumToLidarr(mbid) {
       const refreshedAlbums = await client.get('/album', { params: { artistId } }).then(r => r.data).catch(() => []);
       const refreshedAlbum = refreshedAlbums.find(a => a.foreignAlbumId === mbid);
       if (refreshedAlbum) {
-        await client.put('/album/monitor', { albumIds: [refreshedAlbum.id], monitored: true }).catch(() => null);
         await client.post('/command', { name: 'AlbumSearch', albumIds: [refreshedAlbum.id] }).catch(() => null);
         return { ...refreshedAlbum, artistId };
       }
