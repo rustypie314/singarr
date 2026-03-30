@@ -53,14 +53,56 @@ async function fanartArtistImages(mbid) {
 
 // ── Cover Art Archive ─────────────────────────────────────
 
-async function getCoverArt(mbid) {
+async function getCoverArt(mbid, artistName, albumTitle) {
+  // 1. Cover Art Archive by release-group
   try {
     const res = await axios.get(`${CAA_BASE}/release-group/${mbid}`, { timeout: 5000 });
-    return res.data?.images?.[0]?.thumbnails?.['500']
-        || res.data?.images?.[0]?.thumbnails?.small
-        || res.data?.images?.[0]?.image
-        || null;
-  } catch { return null; }
+    const img = res.data?.images?.[0]?.thumbnails?.['500']
+             || res.data?.images?.[0]?.thumbnails?.small
+             || res.data?.images?.[0]?.image;
+    if (img) return img;
+  } catch {}
+
+  // 2. Cover Art Archive by release (same MBID, different endpoint)
+  try {
+    const res = await axios.get(`${CAA_BASE}/release/${mbid}`, { timeout: 5000 });
+    const img = res.data?.images?.[0]?.thumbnails?.['500']
+             || res.data?.images?.[0]?.thumbnails?.small
+             || res.data?.images?.[0]?.image;
+    if (img) return img;
+  } catch {}
+
+  // 3. Last.fm album art
+  if (artistName && albumTitle) {
+    try {
+      const apiKey = getApiKey('lastfm_api_key', 'LASTFM_API_KEY');
+      if (apiKey) {
+        const res = await axios.get('https://ws.audioscrobbler.com/2.0/', {
+          params: { method: 'album.getinfo', album: albumTitle, artist: artistName, api_key: apiKey, format: 'json' },
+          timeout: 5000,
+        });
+        const images = res.data?.album?.image || [];
+        const img = images.find(i => i.size === 'extralarge')?.['#text']
+                 || images.find(i => i.size === 'large')?.['#text'];
+        if (img && !img.includes('2a96cbd8b46e442fc41c2b86b821562f')) return img;
+      }
+    } catch {}
+  }
+
+  // 4. Plex thumb (if already in library)
+  if (albumTitle) {
+    try {
+      const db = getDb();
+      const plexItem = db.prepare(`
+        SELECT thumb FROM plex_library_cache
+        WHERE type = 'album' AND LOWER(title) = LOWER(?)
+        LIMIT 1
+      `).get(albumTitle);
+      if (plexItem?.thumb) return `/api/plex/thumb?path=${encodeURIComponent(plexItem.thumb)}`;
+    } catch {}
+  }
+
+  return null;
 }
 
 // ── GET /search/artists ───────────────────────────────────
@@ -150,7 +192,10 @@ router.get('/albums', requireAuth, async (req, res) => {
     const db = getDb();
     const releaseGroups = (mbRes.data['release-groups'] || []).filter(strictFilter).slice(0, 50);
     const coverResults = await Promise.all(
-      releaseGroups.map(album => getCoverArt(album.id).catch(() => null))
+      releaseGroups.map(album => {
+        const artist = album['artist-credit']?.[0]?.artist?.name || album['artist-credit']?.[0]?.name || null;
+        return getCoverArt(album.id, artist, album.title).catch(() => null);
+      })
     );
 
     const albums = releaseGroups.map((album, i) => {
@@ -331,7 +376,10 @@ router.get('/artist/:mbid/albums', requireAuth, async (req, res) => {
 
     // Fetch cover art for first 20 only to keep it fast
     const toFetch = groups.slice(0, 20);
-    const covers = await Promise.all(toFetch.map(g => getCoverArt(g.id).catch(() => null)));
+    const covers = await Promise.all(toFetch.map(g => {
+      const artist = artistName || g['artist-credit']?.[0]?.artist?.name || null;
+      return getCoverArt(g.id, artist, g.title).catch(() => null);
+    }));
 
     const albums = groups.map((g, i) => {
       const existingRequest = db.prepare(
