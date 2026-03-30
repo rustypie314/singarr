@@ -105,6 +105,12 @@ async function addAlbumToLidarr(mbid) {
     });
     artistId = newArtistRes.data.id;
 
+    // Ensure artist is monitored (addOptions: monitor:'none' can override monitored:true)
+    await client.put(`/artist/${artistId}`, {
+      ...newArtistRes.data,
+      monitored: true,
+    }).catch(() => null);
+
     // Wait for Lidarr to index the artist's albums (retry up to 10s)
     let lidarrAlbum = null;
     console.log(`[Lidarr] Artist added (id=${artistId}), waiting for albums to index...`);
@@ -118,8 +124,12 @@ async function addAlbumToLidarr(mbid) {
 
     if (!lidarrAlbum) throw new Error('Album not found in Lidarr after artist was added — try again in a moment');
 
-    await client.put('/album/monitor', { albumIds: [lidarrAlbum.id], monitored: true }).catch(() => null);
-    await client.post('/command', { name: 'AlbumSearch', albumIds: [lidarrAlbum.id] }).catch(() => null);
+    console.log(`[Lidarr] Found album id=${lidarrAlbum.id}, monitoring and searching...`);
+    const monitorRes = await client.put('/album/monitor', { albumIds: [lidarrAlbum.id], monitored: true })
+      .catch(e => { console.error('[Lidarr] Monitor failed:', e.response?.data || e.message); return null; });
+    console.log(`[Lidarr] Monitor result: ${monitorRes?.status}`);
+    await client.post('/command', { name: 'AlbumSearch', albumIds: [lidarrAlbum.id] })
+      .catch(e => { console.error('[Lidarr] Search command failed:', e.response?.data || e.message); });
 
     return { ...lidarrAlbum, artistId };
   } else {
