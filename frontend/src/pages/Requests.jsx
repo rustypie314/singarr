@@ -40,6 +40,7 @@ export default function Requests() {
 
 
   return (
+    <>
     <div style={styles.root}>
       <div style={styles.header}>
         <div>
@@ -217,6 +218,7 @@ export default function Requests() {
           </div>
         </div>
       )}
+    </>
   )
 }
 
