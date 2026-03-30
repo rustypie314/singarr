@@ -24,8 +24,9 @@ export default function Requests() {
     finally { setLoading(false) }
   }
 
+  const [confirmDelete, setConfirmDelete] = useState(null) // holds request id to delete
+
   async function deleteRequest(id) {
-    if (!confirm('Remove this request?')) return
     try {
       await api.delete(`/requests/${id}`)
       setRequests(r => r.filter(x => x.id !== id))
@@ -177,7 +178,7 @@ export default function Requests() {
 
               {/* Actions */}
               <button
-                onClick={() => deleteRequest(req.id)}
+                onClick={() => setConfirmDelete(req)}
                 style={styles.deleteBtn}
                 title="Remove"
               >
@@ -188,6 +189,34 @@ export default function Requests() {
         </div>
       )}
     </div>
+
+      {/* Confirm delete modal */}
+      {confirmDelete && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={() => setConfirmDelete(null)}>
+          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 28, maxWidth: 400, width: '100%', boxShadow: '0 32px 64px rgba(0,0,0,0.4)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 20, marginBottom: 8 }}>🗑️</div>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Remove request?</h2>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>
+              <strong style={{ color: 'var(--text-primary)' }}>{confirmDelete.title}</strong>
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
+              This will remove the request from Singarr. It will not affect anything in Lidarr or Plex.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setConfirmDelete(null)}
+                style={{ flex: 1, padding: 11, background: 'var(--bg-overlay)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={() => { deleteRequest(confirmDelete.id); setConfirmDelete(null) }}
+                style={{ flex: 1, padding: 11, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 'var(--radius-md)', color: '#ef4444', fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   )
 }
 
