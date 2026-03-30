@@ -62,8 +62,8 @@ cron.schedule('0 * * * *', async () => {
   try { await syncPlexLibrary(); } catch (e) { console.error('[Cron] Plex sync failed:', e.message); }
 });
 
-// Cron: sync Lidarr statuses every 5 minutes
-cron.schedule('*/5 * * * *', async () => {
+// Cron: sync Lidarr statuses every minute
+cron.schedule('* * * * *', async () => {
   try { await syncLidarrStatuses(); } catch (e) { console.error('[Cron] Lidarr sync failed:', e.message); }
 });
 
