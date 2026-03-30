@@ -55,15 +55,22 @@ function getRecentRequests() {
     LIMIT 20
   `).all();
 
-  const plexLookup = db.prepare(`
+  const plexExact = db.prepare(`
     SELECT plex_rating_key, quality FROM plex_library_cache
     WHERE type = 'album' AND LOWER(title) = LOWER(?) AND (? IS NULL OR ? = '' OR LOWER(artist_name) = LOWER(?))
+    LIMIT 1
+  `);
+  const plexFuzzy = db.prepare(`
+    SELECT plex_rating_key, quality FROM plex_library_cache
+    WHERE type = 'album' AND (? IS NULL OR ? = '' OR LOWER(artist_name) = LOWER(?))
+    AND LOWER(title) LIKE LOWER(?) || '%'
     LIMIT 1
   `);
 
   return recentRequests.map(req => {
     if (req.status !== 'downloaded' || req.type !== 'album') return req;
-    const plexItem = plexLookup.get(req.title, req.artist_name, req.artist_name, req.artist_name);
+    const plexItem = plexExact.get(req.title, req.artist_name, req.artist_name, req.artist_name)
+                  || plexFuzzy.get(req.artist_name, req.artist_name, req.artist_name, req.title.split(':')[0].split('(')[0].trim());
     return plexItem ? { ...req, plex_rating_key: plexItem.plex_rating_key, quality: plexItem.quality } : req;
   });
 }

@@ -45,14 +45,21 @@ router.get('/all', requireAuth, (req, res) => {
   }
 
   // Cross-reference downloaded album requests with plex_library_cache
-  const plexLookup = db.prepare(`
+  const plexExact = db.prepare(`
     SELECT plex_rating_key, quality FROM plex_library_cache
     WHERE type = 'album' AND LOWER(title) = LOWER(?) AND (? IS NULL OR ? = '' OR LOWER(artist_name) = LOWER(?))
     LIMIT 1
   `);
+  const plexFuzzy = db.prepare(`
+    SELECT plex_rating_key, quality FROM plex_library_cache
+    WHERE type = 'album' AND (? IS NULL OR ? = '' OR LOWER(artist_name) = LOWER(?))
+    AND LOWER(title) LIKE LOWER(?) || '%'
+    LIMIT 1
+  `);
   const enriched = requests.map(r => {
     if (r.status !== 'downloaded' || r.type !== 'album') return r;
-    const plexItem = plexLookup.get(r.title, r.artist_name, r.artist_name, r.artist_name);
+    const plexItem = plexExact.get(r.title, r.artist_name, r.artist_name, r.artist_name)
+                  || plexFuzzy.get(r.artist_name, r.artist_name, r.artist_name, r.title.split(':')[0].split('(')[0].trim());
     return plexItem ? { ...r, plex_rating_key: plexItem.plex_rating_key, quality: plexItem.quality } : r;
   });
 
