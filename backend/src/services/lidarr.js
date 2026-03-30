@@ -128,8 +128,9 @@ async function addAlbumToLidarr(mbid) {
     const monitorRes = await client.put('/album/monitor', { albumIds: [lidarrAlbum.id], monitored: true })
       .catch(e => { console.error('[Lidarr] Monitor failed:', e.response?.data || e.message); return null; });
     console.log(`[Lidarr] Monitor result: ${monitorRes?.status}`);
-    await client.post('/command', { name: 'AlbumSearch', albumIds: [lidarrAlbum.id] })
-      .catch(e => { console.error('[Lidarr] Search command failed:', e.response?.data || e.message); });
+    const searchRes = await client.post('/command', { name: 'AlbumSearch', albumIds: [lidarrAlbum.id] })
+      .catch(e => { console.error('[Lidarr] Search command failed:', e.response?.data || e.message); return null; });
+    console.log(`[Lidarr] Search result: ${searchRes?.status} data: ${JSON.stringify(searchRes?.data)}`);
 
     return { ...lidarrAlbum, artistId };
   } else {
