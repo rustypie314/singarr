@@ -71,6 +71,7 @@ router.get('/counts', requireAuth, (req, res) => {
 // Create issue
 router.post('/', requireAuth, (req, res) => {
   const { type, title, description, requestId } = req.body;
+  if (!req.user.is_approved) return res.status(403).json({ error: 'Your account is pending approval.' });
   if (!type || !title) return res.status(400).json({ error: 'type and title are required' });
   if (!ISSUE_TYPES[type]) return res.status(400).json({ error: 'Invalid issue type' });
 

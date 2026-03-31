@@ -568,7 +568,10 @@ export default function Admin() {
           </div>
           <div style={styles.card}>
             {(() => {
+              const autoApprove = settings?.auto_approve_plex_users === 'true'
               const localUsers = users.filter(u => u.is_local_admin || (!u.plex_id))
+              const pendingUsers = users.filter(u => u.plex_id && !u.is_local_admin && !u.is_approved)
+              const approvedPlexUsers = users.filter(u => u.plex_id && !u.is_local_admin && u.is_approved)
               const plexUsers = users.filter(u => u.plex_id && !u.is_local_admin)
               const removableSelected = [...selectedUserIds].filter(id => {
                 const u = users.find(u => u.id === id)
@@ -666,6 +669,34 @@ export default function Admin() {
                     </div>
                   </div>
 
+                  {/* Pending Approval — only shown when auto-approve is off */}
+                  {!autoApprove && pendingUsers.length > 0 && (
+                    <div style={{ marginBottom: 20 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#e8a30f', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>⏳ Pending Approval ({pendingUsers.length})</div>
+                      <div style={{ background: 'rgba(232,163,15,0.04)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(232,163,15,0.2)', padding: '0 12px' }}>
+                        {pendingUsers.map(u => (
+                          <div key={u.id} style={{ ...styles.userRow, borderLeft: '3px solid rgba(232,163,15,0.4)' }} className="user-row-mobile">
+                            <div style={styles.userAvatarWrap}>
+                              {u.avatar ? <img src={u.avatar} alt="" style={styles.userAvatar} /> : <div style={styles.userAvatarFallback}>{u.username?.[0]?.toUpperCase()}</div>}
+                            </div>
+                            <div style={styles.userInfo}>
+                              <div style={styles.userName}>{u.username}</div>
+                              <div style={styles.userMeta}>{u.email && <>{u.email} · </>}{u.total_requests} requests</div>
+                            </div>
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999, background: 'rgba(232,163,15,0.12)', color: '#e8a30f', border: '1px solid rgba(232,163,15,0.3)', flexShrink: 0 }}>Pending</span>
+                            <button onClick={() => updateUser(u.id, { isApproved: true })}
+                              style={{ fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 7, background: 'rgba(45,190,108,0.12)', color: '#2dbe6c', border: '1px solid rgba(45,190,108,0.3)', cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0 }}>
+                              ✓ Approve
+                            </button>
+                            <div style={{ ...styles.userActions, flexWrap: 'wrap', gap: 8 }} className="user-controls">
+                              <Toggle value={!!u.is_admin} onChange={v => updateUser(u.id, { isAdmin: v })} label="Admin" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Local Accounts */}
                   {localUsers.length > 0 && (
                     <div style={{ marginBottom: 20 }}>
@@ -676,12 +707,12 @@ export default function Admin() {
                     </div>
                   )}
 
-                  {/* Plex Users */}
-                  {plexUsers.length > 0 && (
+                  {/* Plex Users — approved only */}
+                  {approvedPlexUsers.length > 0 && (
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Plex Users</div>
                       <div style={{ background: 'var(--bg-overlay)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', padding: '0 12px' }}>
-                        {plexUsers.map(u => <UserRow key={u.id} u={u} />)}
+                        {approvedPlexUsers.map(u => <UserRow key={u.id} u={u} />)}
                       </div>
                     </div>
                   )}

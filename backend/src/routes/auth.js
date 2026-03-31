@@ -48,6 +48,7 @@ router.post('/local', async (req, res) => {
       avatar: user.avatar,
       isAdmin: !!user.is_admin,
       isLocalAdmin: !!user.is_local_admin,
+      isApproved: true,
     }
   });
 });
@@ -118,11 +119,24 @@ router.get('/plex/pin/:pinId', async (req, res) => {
     }
 
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+
     if (!user.is_approved) {
-      return res.json({ authenticated: true, approved: false });
+      return res.json({
+        authenticated: true,
+        approved: false,
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          avatar: user.avatar,
+          isAdmin: false,
+          isLocalAdmin: false,
+          isApproved: false,
+        }
+      });
     }
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
     res.json({
       authenticated: true,
       approved: true,
@@ -133,6 +147,7 @@ router.get('/plex/pin/:pinId', async (req, res) => {
         avatar: user.avatar,
         isAdmin: !!user.is_admin,
         isLocalAdmin: !!user.is_local_admin,
+        isApproved: true,
       }
     });
   } catch (e) {
@@ -143,7 +158,7 @@ router.get('/plex/pin/:pinId', async (req, res) => {
 
 // ── Get current user ──────────────────────────────────────
 router.get('/me', requireAuth, (req, res) => {
-  const { id, username, display_name, email, avatar, is_admin, is_local_admin, request_limit_override, album_limit_override, track_limit_override, created_at } = req.user;
+  const { id, username, display_name, email, avatar, is_admin, is_local_admin, is_approved, request_limit_override, album_limit_override, track_limit_override, created_at } = req.user;
   res.json({
     id,
     username,
@@ -152,6 +167,7 @@ router.get('/me', requireAuth, (req, res) => {
     avatar,
     isAdmin: !!is_admin,
     isLocalAdmin: !!is_local_admin,
+    isApproved: !!is_approved,
     requestLimitOverride: request_limit_override,
     albumLimitOverride: album_limit_override,
     trackLimitOverride: track_limit_override,

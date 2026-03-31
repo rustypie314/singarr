@@ -37,8 +37,8 @@ export default function Login() {
             clearInterval(pollRef.current)
             popup?.close()
             if (!res.data.approved) {
-              toast('Your account is pending approval by an admin.', { icon: '⏳' })
-              setPlexLoading(false)
+              login(res.data.token, res.data.user)
+              toast('Your account is pending admin approval.', { icon: '⏳' })
               return
             }
             login(res.data.token, res.data.user)

@@ -92,6 +92,8 @@ router.get('/limits', requireAuth, (req, res) => {
 router.post('/', requireAuth, async (req, res) => {
   const { type, musicbrainzId, title, artistName, coverUrl } = req.body;
 
+  if (!req.user.is_approved) return res.status(403).json({ error: 'Your account is pending approval.' });
+
   if (!type || !title) return res.status(400).json({ error: 'type and title are required' });
   if (!['artist', 'album', 'track'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
   if (title.length > 500) return res.status(400).json({ error: 'Title too long' });

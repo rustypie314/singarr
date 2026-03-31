@@ -73,7 +73,8 @@ const DiscIcon    = () => <svg width="10" height="10" viewBox="0 0 24 24" fill="
 const btnWeb   = { fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(229,160,13,0.12)', color: '#e5a00d', border: '1px solid rgba(229,160,13,0.3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }
 const btnLocal = { fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(79,156,249,0.12)', color: '#4f9cf9', border: '1px solid rgba(79,156,249,0.3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }
 
-function PlexButtons({ plexConfig, ratingKey, isArtist, isAdmin }) {
+function PlexButtons({ plexConfig, ratingKey, isArtist, isAdmin, isApproved }) {
+  if (isApproved === false) return null
   const machineId  = plexConfig?.machineId
   const localUrl   = plexConfig?.localUrl?.replace(/\/$/, '')
   const effectiveMode = isAdmin ? (plexConfig?.openMode || 'web') : 'web'
@@ -141,7 +142,7 @@ function LibraryCard({ item, type, plexConfig }) {
           {badgeText}
         </span>
       </div>
-      <PlexButtons plexConfig={plexConfig} ratingKey={item.plex_rating_key} isArtist={isArtist} isAdmin={user?.isAdmin} />
+      <PlexButtons plexConfig={plexConfig} ratingKey={item.plex_rating_key} isArtist={isArtist} isAdmin={user?.isAdmin} isApproved={user?.isApproved} />
     </motion.div>
   )
 }
@@ -182,7 +183,7 @@ function RequestCard({ req, plexConfig }) {
         })()
         : <StatusBadge status={req.status} size="sm" />}
       </div>
-      <PlexButtons plexConfig={plexConfig} ratingKey={req.plex_rating_key} isArtist={false} isAdmin={user?.isAdmin} />
+      <PlexButtons plexConfig={plexConfig} ratingKey={req.plex_rating_key} isArtist={false} isAdmin={user?.isAdmin} isApproved={user?.isApproved} />
     </motion.div>
   )
 }
@@ -316,6 +317,7 @@ export default function Home() {
   }
 
   function requestItem(item, type) {
+    if (user?.isApproved === false) return toast('Your account is pending approval.', { icon: '⏳' })
     if (item.inPlex)        return toast('Already in your Plex library', { icon: '📚' })
     if (item.requestStatus) return toast(`Already ${item.requestStatus}`)
     setSelected(item); setSelectedType(type)
@@ -331,7 +333,7 @@ export default function Home() {
   const showDiscover = !query
 
   return (
-    <div style={styles.root}>
+    <div style={styles.root} className={user?.isApproved === false ? 'read-only-mode' : ''}>
       {/* Header */}
       <div style={styles.header}>
         <div>
@@ -451,8 +453,8 @@ export default function Home() {
               />
             )}
 
-            {/* Recent requests row */}
-            {(discoverLoading || (discover?.recentRequests?.length > 0)) && (
+            {/* Recent requests row — hidden for unapproved users */}
+            {user?.isApproved !== false && (discoverLoading || (discover?.recentRequests?.length > 0)) && (
               <ScrollRow
                 title="Recent requests"
                 items={discover?.recentRequests || []}
@@ -693,7 +695,7 @@ function ResultRow({ item, type, index, onRequest }) {
         {item.requestStatus && <StatusBadge status={item.requestStatus} size="sm" />}
         {!isBlocked && hovered && (
           <motion.button initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }}
-            onClick={e => { e.stopPropagation(); onRequest() }} style={styles.requestBtn}>
+            onClick={e => { e.stopPropagation(); onRequest() }} style={styles.requestBtn} className="request-btn">
             <IconPlus size={13} color="#fff" />Request
           </motion.button>
         )}
@@ -936,7 +938,7 @@ function AlbumRow({ item, index, expanded, tracks, onExpand, onRequestAlbum, onR
           {item.requestStatus && <StatusBadge status={item.requestStatus} size="sm" />}
           {!isBlocked && hovered && (
             <motion.button initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }}
-              onClick={e => { e.stopPropagation(); onRequestAlbum() }} style={styles.requestBtn}>
+              onClick={e => { e.stopPropagation(); onRequestAlbum() }} style={styles.requestBtn} className="request-btn">
               <IconDownload size={13} color="#fff" />Album
             </motion.button>
           )}

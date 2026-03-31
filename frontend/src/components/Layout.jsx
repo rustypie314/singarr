@@ -137,6 +137,13 @@ export default function Layout() {
 
       {/* Main */}
       <main style={styles.main}>
+        {user && !user.isAdmin && !user.isApproved && (
+          <div style={{ background: 'rgba(232,163,15,0.08)', borderBottom: '1px solid rgba(232,163,15,0.2)', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 9, fontSize: 13 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#e8a30f', flexShrink: 0, animation: 'pulse 2s infinite' }} />
+            <span style={{ color: '#f0f0f2', fontWeight: 600 }}>Account pending approval</span>
+            <span style={{ color: '#e8a30f' }}>— Your account is read-only.</span>
+          </div>
+        )}
         <AnimatePresence mode="wait">
           <motion.div key={location.pathname}
             initial={{ opacity: 0, y: 10 }}
