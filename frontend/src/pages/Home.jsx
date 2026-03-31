@@ -335,7 +335,7 @@ export default function Home() {
       {/* Header */}
       <div style={styles.header}>
         <div>
-          <h1 style={styles.pageTitle}>Discover</h1>
+          <h1 style={styles.pageTitle} className="page-title-mobile">Discover</h1>
           <p style={styles.pageSubtitle}>Search and request music for your Plex library</p>
         </div>
         <div style={styles.limitWrap}>
@@ -406,7 +406,7 @@ export default function Home() {
             {genres && genres.length > 0 && !discoverLoading && (
               <div style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>Browse by genre</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} className="genre-pills-mobile">
                   <button onClick={() => setGenreFilter(null)}
                     style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 999, border: '1px solid', cursor: 'pointer', fontFamily: 'var(--font-sans)', transition: 'var(--transition)',
                       background: genreFilter === null ? 'var(--accent-muted)' : 'transparent',
@@ -476,9 +476,9 @@ export default function Home() {
             {/* Tabs */}
             <AnimatePresence>
               {(hasResults || loading) && (
-                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={styles.tabBar}>
+                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={styles.tabBar} className="search-tabs-mobile">
                   {TABS.map(t => (
-                    <button key={t.id} onClick={() => { setTab(t.id); setTabPages(prev => ({ ...prev, [t.id]: 0 })) }} style={{
+                    <button key={t.id} onClick={() => { setTab(t.id); setTabPages(prev => ({ ...prev, [t.id]: 0 })) }} className="search-tab-btn-mobile" style={{
                       ...styles.tabBtn,
                       background: tab === t.id ? 'var(--text-primary)' : 'transparent',
                       color: tab === t.id ? 'var(--bg-base)' : 'var(--text-secondary)',
@@ -1100,7 +1100,7 @@ const styles = {
     borderRadius: 'var(--radius-lg)',
   },
 
-  tabBar:  { display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' },
+  tabBar:  { display: 'flex', gap: '8px', marginBottom: '20px', overflow: 'hidden' },
   tabBtn:  { padding: '7px 18px', borderRadius: '999px', fontSize: '13px', fontWeight: '600', fontFamily: 'var(--font-sans)', cursor: 'pointer', transition: 'all var(--transition)', whiteSpace: 'nowrap' },
   results: { minHeight: '300px' },
   emptyState: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', gap: '12px' },

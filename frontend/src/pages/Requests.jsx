@@ -24,7 +24,9 @@ export default function Requests() {
     finally { setLoading(false) }
   }
 
-  const [confirmDelete, setConfirmDelete] = useState(null) // holds request id to delete
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [rejectModal, setRejectModal]     = useState(null) // holds request to reject
+  const [rejectNote, setRejectNote]       = useState('')
 
   async function deleteRequest(id) {
     try {
@@ -32,6 +34,14 @@ export default function Requests() {
       setRequests(r => r.filter(x => x.id !== id))
       toast.success('Request removed')
     } catch { toast.error('Failed to remove') }
+  }
+
+  async function updateStatus(id, status, note = '') {
+    try {
+      await api.put(`/requests/${id}/status`, { status, note })
+      setRequests(r => r.map(x => x.id === id ? { ...x, status } : x))
+      toast.success(status === 'approved' ? 'Request approved' : 'Request rejected')
+    } catch { toast.error('Failed to update request') }
   }
 
   const STATUSES = ['all', 'pending', 'approved', 'found', 'downloading', 'downloaded', 'rejected']
@@ -44,7 +54,7 @@ export default function Requests() {
     <div style={styles.root}>
       <div style={styles.header}>
         <div>
-          <h1 style={styles.pageTitle}>Requests</h1>
+          <h1 style={styles.pageTitle} className="page-title-mobile">Requests</h1>
           <p style={styles.pageSubtitle}>
             {user?.isAdmin ? 'All user requests' : 'Your music requests'}
           </p>
@@ -96,6 +106,7 @@ export default function Requests() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.03 }}
               style={styles.row}
+              className="req-row-stack"
             >
               {/* Art / Type icon */}
               <div style={styles.rowArt}>
@@ -128,7 +139,7 @@ export default function Requests() {
               </div>
 
               {/* Status */}
-              <div style={styles.rowStatus}>
+              <div style={styles.rowStatus} className="req-status-col">
                 {req.status === 'downloaded' && req.quality ? (() => {
                   const qualityLabel = req.quality === '24bit-flac' ? '24-bit FLAC'
                                      : req.quality === '16bit-flac' ? '16-bit FLAC'
@@ -175,24 +186,73 @@ export default function Requests() {
               </div>
 
               {/* Actions */}
-              <button
-                onClick={() => setConfirmDelete(req)}
-                style={styles.deleteBtn}
-                title="Remove"
-              >
-                <IconTrash size={15} color="currentColor" />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }} className="req-actions-col">
+                {user?.isAdmin && req.status === 'pending' && (
+                  <>
+                    <button onClick={() => updateStatus(req.id, 'approved')}
+                      style={{ padding: '5px 12px', background: 'rgba(45,190,108,0.12)', border: '1px solid rgba(45,190,108,0.3)', borderRadius: 7, color: '#2dbe6c', fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
+                      ✓ Approve
+                    </button>
+                    <button onClick={() => { setRejectModal(req); setRejectNote('') }}
+                      style={{ padding: '5px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 7, color: '#ef4444', fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
+                      ✕ Reject
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => setConfirmDelete(req)}
+                  style={styles.deleteBtn}
+                  title="Remove"
+                >
+                  <IconTrash size={15} color="currentColor" />
+                </button>
+              </div>
             </motion.div>
           ))}
         </div>
       )}
     </div>
 
+      {/* Reject reason modal */}
+      {rejectModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={() => setRejectModal(null)}>
+          <div className="modal-mobile" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 28, maxWidth: 400, width: '100%', boxShadow: '0 32px 64px rgba(0,0,0,0.4)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 20, marginBottom: 8 }}>✕</div>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Reject request?</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>Rejecting:</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>
+              {rejectModal.title}{rejectModal.artist_name ? ` — ${rejectModal.artist_name}` : ''}
+            </p>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Reason</div>
+            <textarea
+              value={rejectNote}
+              onChange={e => setRejectNote(e.target.value)}
+              placeholder="e.g. Already available in a different format..."
+              maxLength={500}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, fontFamily: 'var(--font-sans)', resize: 'vertical', minHeight: 80, outline: 'none', marginBottom: 6 }}
+            />
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 20 }}>Optional — included in the notification email to the user.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setRejectModal(null)}
+                style={{ flex: 1, padding: 11, background: 'var(--bg-overlay)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={() => { updateStatus(rejectModal.id, 'rejected', rejectNote); setRejectModal(null); setRejectNote('') }}
+                style={{ flex: 1, padding: 11, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: 'var(--radius-md)', color: '#ef4444', fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
+                ✕ Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Confirm delete modal */}
       {confirmDelete && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
           onClick={() => setConfirmDelete(null)}>
-          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 28, maxWidth: 400, width: '100%', boxShadow: '0 32px 64px rgba(0,0,0,0.4)' }}
+          <div className="modal-mobile" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 28, maxWidth: 400, width: '100%', boxShadow: '0 32px 64px rgba(0,0,0,0.4)' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: 20, marginBottom: 8 }}>🗑️</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Remove request?</h2>

@@ -159,3 +159,199 @@ a { color: inherit; text-decoration: none; }
   /* Tighter row padding on mobile */
   .row-mobile { padding: 10px 8px !important; }
 }
+
+/* ── Comprehensive mobile polish ── */
+@media (max-width: 768px) {
+
+  /* Page titles */
+  .page-title-mobile { font-size: 22px !important; }
+
+  /* Admin tabs — horizontal scroll */
+  .tabs-mobile {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 2px !important;
+  }
+  .tabs-mobile::-webkit-scrollbar { display: none !important; }
+  .tab-btn-mobile { white-space: nowrap !important; flex-shrink: 0 !important; }
+
+  /* Request rows — stack on mobile */
+  .req-row-stack {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    align-items: flex-start !important;
+  }
+  .req-row-stack .req-info-col { min-width: calc(100% - 60px) !important; }
+  .req-row-stack .req-status-col {
+    width: 100% !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+  .req-row-stack .req-actions-col {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    gap: 6px !important;
+  }
+
+  /* Form fields — stack side-by-side fields */
+  .field-group-mobile {
+    flex-direction: column !important;
+  }
+  .field-group-mobile > * { width: 100% !important; }
+
+  /* API row — stack */
+  .api-row-mobile {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .api-row-mobile > * { width: 100% !important; }
+
+  /* Stat grid — 2 cols on mobile */
+  .stats-grid-mobile {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Analytics grid — single col */
+  .analytics-grid-mobile {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Issues */
+  .issue-header-mobile {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+  .issue-meta-mobile {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+
+  /* Modals — full width with less padding */
+  .modal-mobile {
+    padding: 20px !important;
+    border-radius: 16px !important;
+  }
+
+  /* Search — tighter */
+  .search-tabs-mobile {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    flex-wrap: nowrap !important;
+  }
+  .search-tabs-mobile::-webkit-scrollbar { display: none !important; }
+  .search-tab-btn-mobile { white-space: nowrap !important; flex-shrink: 0 !important; }
+
+  /* Discover — genre pills wrap nicely */
+  .genre-pills-mobile {
+    gap: 6px !important;
+  }
+
+  /* Settings section cards */
+  .settings-card-mobile {
+    padding: 14px !important;
+  }
+
+  /* User rows in admin */
+  .user-row-mobile {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .user-row-mobile .user-controls {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+
+  /* Modal padding reduction */
+  .modal-mobile {
+    padding: 20px !important;
+    border-radius: 16px !important;
+  }
+
+  /* Reduce page title on mobile */
+  .page-title-mobile { font-size: 22px !important; }
+
+  /* Field inputs full width */
+  .field-group-mobile > * { width: 100% !important; min-width: 0 !important; }
+
+  /* Issue card header — wrap on very small screens */
+  .issue-header-mobile {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    justify-content: flex-end !important;
+  }
+
+  /* Search input full width */
+  .search-wrap-mobile { padding: 0 !important; }
+
+  /* Hide less important columns on mobile */
+  .hide-on-mobile { display: none !important; }
+
+  /* Tighter padding on small screens */
+  .tight-mobile { padding: 12px !important; }
+
+  /* Request row status stacks below info */
+  .req-status-col {
+    width: 100% !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+  }
+  .req-actions-col {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+}
+
+/* ── Additional mobile refinements ── */
+@media (max-width: 768px) {
+
+  /* Search input full width */
+  .search-input-mobile {
+    font-size: 16px !important; /* prevents iOS zoom */
+  }
+
+  /* Reduce card scroll row item size slightly */
+  .card-scroll-mobile .card-item {
+    width: 120px !important;
+  }
+
+  /* Stack header actions */
+  .header-actions-mobile {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  /* Admin page title */
+  .admin-title-mobile { font-size: 22px !important; }
+
+  /* Tighter section padding on mobile */
+  .section-mobile { padding: 14px !important; }
+
+  /* Request modal full width */
+  .request-modal-mobile {
+    max-width: 100% !important;
+    border-radius: 16px !important;
+  }
+
+  /* Issues expanded panel padding */
+  .issue-panel-mobile { padding: 12px !important; }
+
+  /* User row in admin — stack controls */
+  .admin-user-row-mobile {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .admin-user-row-mobile .user-limit-selects {
+    flex-wrap: wrap !important;
+    width: 100% !important;
+  }
+}

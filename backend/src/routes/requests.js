@@ -1,5 +1,5 @@
 const express = require('express');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { checkRequestLimit, checkTypeAllowed } = require('../services/limits');
 const { addArtistToLidarr, addAlbumToLidarr } = require('../services/lidarr');
 const { isInPlexLibrary } = require('../services/plex');
@@ -185,6 +185,39 @@ router.delete('/:id', requireAuth, (req, res) => {
   if (!request) return res.status(404).json({ error: 'Not found' });
   if (!req.user.is_admin && request.user_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
   db.prepare('DELETE FROM requests WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// Admin: update request status (approve/reject)
+router.put('/:id/status', requireAdmin, async (req, res) => {
+  const { status, note = '' } = req.body;
+  const valid = ['approved', 'rejected'];
+  if (!valid.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+
+  const db = getDb();
+  const request = db.prepare('SELECT * FROM requests WHERE id = ?').get(req.params.id);
+  if (!request) return res.status(404).json({ error: 'Request not found' });
+
+  db.prepare('UPDATE requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+    .run(status, req.params.id);
+
+  // Send email notifications
+  try {
+    const requester = db.prepare('SELECT email FROM users WHERE id = ?').get(request.user_id);
+    const { notifyRequestApproved, notifyRequestRejected } = require('../services/email');
+    const appUrl = process.env.APP_URL || '';
+    if (status === 'approved' && requester?.email) {
+      notifyRequestApproved(request, requester.email, appUrl).catch(() => {});
+    } else if (status === 'rejected' && requester?.email) {
+      notifyRequestRejected(request, requester.email, note, appUrl).catch(() => {});
+    }
+  } catch {}
+
+  // If approved, send to Lidarr
+  if (status === 'approved') {
+    sendToLidarr(request.id, request.type, request.musicbrainz_id, request.title, request.artist_name);
+  }
+
   res.json({ success: true });
 });
 

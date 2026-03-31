@@ -112,7 +112,7 @@ export default function Issues() {
     <div style={s.root}>
       <div style={s.header}>
         <div>
-          <h1 style={s.pageTitle}>Issues</h1>
+          <h1 style={s.pageTitle} className="page-title-mobile">Issues</h1>
           <p style={s.pageSubtitle}>{user?.isAdmin ? 'All reported issues' : 'Report problems with downloaded music'}</p>
         </div>
         <div style={{ display:'flex', gap:8 }}>
@@ -374,7 +374,7 @@ function IssueCard({ issue: initialIssue, index, isAdmin, onUpdateStatus, onDele
             {issue.request_title && <span style={{ fontSize:11, color:'var(--text-muted)' }}>· {issue.request_title}</span>}
           </div>
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }} className="issue-header-mobile">
           <IssueStatusPill status={issue.status} />
           <span style={{ fontSize:12, color:'var(--text-muted)', transition:'transform 200ms', display:'inline-block', transform: expanded ? 'rotate(180deg)' : 'none' }}>▾</span>
         </div>

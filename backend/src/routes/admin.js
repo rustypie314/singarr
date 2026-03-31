@@ -100,6 +100,30 @@ router.delete('/users/:id', requireAdmin, (req, res) => {
 
 // Update any request status (admin)
 
+// Approve or reject a request
+router.put('/requests/:id', requireAdmin, async (req, res) => {
+  const db = getDb();
+  const { status } = req.body;
+  const request = db.prepare('SELECT * FROM requests WHERE id = ?').get(req.params.id);
+  if (!request) return res.status(404).json({ error: 'Not found' });
+  const validStatuses = ['pending', 'approved', 'found', 'downloading', 'downloaded', 'rejected', 'unavailable'];
+  if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  const prevStatus = request.status;
+  db.prepare('UPDATE requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(status, req.params.id);
+  // Send email notifications on status changes
+  if (status !== prevStatus) {
+    const requester = db.prepare('SELECT email FROM users WHERE id = ?').get(request.user_id);
+    const { notifyRequestApproved, notifyRequestRejected } = require('../services/email');
+    const appUrl = process.env.APP_URL || '';
+    if (status === 'approved' && prevStatus === 'pending') {
+      notifyRequestApproved(request, requester?.email, appUrl).catch(() => {});
+    } else if (status === 'rejected') {
+      notifyRequestRejected(request, requester?.email, '', appUrl).catch(() => {});
+    }
+  }
+  res.json({ success: true });
+});
+
 router.get('/stats', requireAdmin, (req, res) => {
   const db = getDb();
   const totalRequests = db.prepare('SELECT COUNT(*) as c FROM requests').get().c;

@@ -240,7 +240,7 @@ export default function Admin() {
       {/* Unsaved changes dialog */}
       {showDirtyModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 28, maxWidth: 400, width: '100%', boxShadow: '0 32px 64px rgba(0,0,0,0.4)' }}>
+          <div className="modal-mobile" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 28, maxWidth: 400, width: '100%', boxShadow: '0 32px 64px rgba(0,0,0,0.4)' }}>
             <div style={{ fontSize: 20, marginBottom: 8 }}>⚠️</div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Unsaved changes</h2>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
@@ -268,11 +268,11 @@ export default function Admin() {
       </div>
 
       {/* Tabs */}
-      <div style={styles.tabBar}>
+      <div style={styles.tabBar} className="tabs-mobile">
         {TABS.map(t => {
           const labels = { overview:'Overview', services:'Services', requests:'Requests', users:'Users', notifications:'Notifications', metadata:'Metadata Providers', account:'Account', analytics:'Analytics' }
           return (
-            <button key={t} onClick={() => setTab(t)} style={{
+            <button key={t} onClick={() => setTab(t)} className="tab-btn-mobile" style={{
               ...styles.tabBtn,
               borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
               color: tab === t ? 'var(--accent)' : 'var(--text-secondary)',
@@ -286,7 +286,7 @@ export default function Admin() {
       {/* Overview */}
       {tab === 'overview' && stats && (
         <div style={styles.section}>
-          <div style={styles.statsGrid}>
+          <div style={styles.statsGrid} className="stats-grid-mobile">
             {[
               { label: 'Total Requests', value: stats.totalRequests,   Icon: IconHeadphones },
               { label: 'Pending',        value: stats.pendingRequests,  Icon: IconMusicNote  },
@@ -350,7 +350,7 @@ export default function Admin() {
                 <IconDownload size={13} color="var(--accent)" />
                 <span style={styles.apiSectionTitle}>Lidarr</span>
               </div>
-              <div style={styles.apiRow}>
+              <div style={styles.apiRow} className="api-row-mobile">
                 <div style={{ flex: 1 }}>
                   <label style={styles.fieldLabel}>URL</label>
                   <input type="text" placeholder="http://your-server:8686" style={styles.fieldInput}
@@ -379,7 +379,7 @@ export default function Admin() {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="var(--accent)"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 19.2L5.4 12 12 4.8 18.6 12 12 19.2z"/></svg>
                 <span style={styles.apiSectionTitle}>Plex</span>
               </div>
-              <div style={styles.apiRow}>
+              <div style={styles.apiRow} className="api-row-mobile">
                 <div style={{ flex: 1 }}>
                   <label style={styles.fieldLabel}>Server URL</label>
                   <input type="text" placeholder="http://your-server:32400" style={styles.fieldInput}
@@ -471,7 +471,7 @@ export default function Admin() {
             <h3 style={styles.cardTitle}>Request Limits</h3>
             <p style={styles.cardDesc}>Global defaults. Override per-user in the Users tab. Set to 0 for unlimited.</p>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Global Defaults</div>
-            <div style={styles.fieldGroup}>
+            <div style={styles.fieldGroup} className="field-group-mobile">
               <div style={styles.field}>
                 <label style={styles.fieldLabel}>Album requests per window</label>
                 <input type="number" min="0" max="999" style={styles.fieldInput}
@@ -531,7 +531,7 @@ export default function Admin() {
               })
 
               const UserRow = ({ u }) => (
-                <div key={u.id} style={styles.userRow}>
+                <div key={u.id} style={styles.userRow} className="user-row-mobile">
                   {editMode && !u.is_local_admin && (
                     <div onClick={() => toggleSelectUser(u.id)} style={{
                       width: 20, height: 20, borderRadius: 6, flexShrink: 0, cursor: 'pointer',
@@ -556,7 +556,7 @@ export default function Admin() {
                       {u.track_limit_override != null && <span style={{ color: 'var(--accent)' }}> · Tracks: {u.track_limit_override === 0 ? '∞' : u.track_limit_override}</span>}
                     </div>
                   </div>
-                  <div style={{ ...styles.userActions, flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ ...styles.userActions, flexWrap: 'wrap', gap: 8 }} className="user-controls">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Albums</label>
                       <select style={styles.select} value={u.album_limit_override ?? ''}
@@ -674,7 +674,7 @@ export default function Admin() {
                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 4 }}>Artist images &amp; bios</span>
                 <a href="https://www.last.fm/api/account/create" target="_blank" rel="noopener" style={styles.getKeyLink}>Get free key →</a>
               </div>
-              <div style={styles.apiRow}>
+              <div style={styles.apiRow} className="api-row-mobile">
                 <div style={{ flex: 1 }}>
                   <label style={styles.fieldLabel}>API Key</label>
                   <input type="password" placeholder="32-character API key" style={styles.fieldInput} autoComplete="off"
@@ -700,7 +700,7 @@ export default function Admin() {
                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 4 }}>HD artist art &amp; banners</span>
                 <a href="https://fanart.tv/get-an-api-key" target="_blank" rel="noopener" style={styles.getKeyLink}>Get free key →</a>
               </div>
-              <div style={styles.apiRow}>
+              <div style={styles.apiRow} className="api-row-mobile">
                 <div style={{ flex: 1 }}>
                   <label style={styles.fieldLabel}>API Key</label>
                   <input type="password" placeholder="API key" style={styles.fieldInput} autoComplete="off"
@@ -742,7 +742,7 @@ export default function Admin() {
       {confirmDelete && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
           onClick={e => { if (e.target === e.currentTarget) setConfirmDelete(null) }}>
-          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 16, width: '100%', maxWidth: 400, padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div className="modal-mobile" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 16, width: '100%', maxWidth: 400, padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
               <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
                 {confirmDelete.users.length === 1 ? 'Remove user?' : `Remove ${confirmDelete.users.length} users?`}
@@ -898,7 +898,7 @@ function NotificationsTab({ api, settings, setSettings, saveSettings, saving }) 
         <h3 style={{ ...styles.cardTitle, marginBottom:4 }}>SMTP Configuration</h3>
         <p style={styles.cardDesc}>Your outgoing mail server settings.</p>
 
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }} className="field-group-mobile">
           <div>
             <label style={styles.fieldLabel}>SMTP Host</label>
             <input type="text" placeholder="smtp.gmail.com" style={fieldInput}
@@ -1285,7 +1285,7 @@ function AnalyticsTab({ analytics, stats }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }} className="analytics-grid-mobile">
 
         {/* By type */}
         <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px' }}>
