@@ -5,6 +5,7 @@ const { notifyAdminNewIssue, notifyIssueStatusChanged, notifyIssueNoteAdded } = 
 const jwt = require('jsonwebtoken');
 
 const router = express.Router();
+const { audit } = require('../services/audit');
 
 // ── SSE client registry ───────────────────────────────────
 // Map of issueId → Set of { res, userId }
@@ -89,6 +90,7 @@ router.post('/', requireAuth, (req, res) => {
       notifyAdminNewIssue(issue, req.user.username, admin.email, appUrl).catch(() => {});
     }
 
+    audit({ userId: req.user.id, username: req.user.username, category: 'issue', action: 'Opened issue', detail: issue.title });
     res.status(201).json({ issue });
   } catch (e) {
     console.error('[Issues] POST error:', e.message);
@@ -183,8 +185,8 @@ router.put('/:id', requireAdmin, (req, res) => {
       .run(req.params.id, req.user.id, 'system', body);
     const systemNote = db.prepare('SELECT n.*, u.username FROM issue_notes n JOIN users u ON n.user_id = u.id WHERE n.id = ?').get(result.lastInsertRowid);
     pushToIssue(req.params.id, 'note', systemNote);
-    // Also push the updated issue so status pill updates live
     pushToIssue(req.params.id, 'status', { status });
+    audit({ userId: req.user.id, username: req.user.username, category: 'issue', action: `${statusLabels[status] || status} issue`, detail: issue.title });
   }
 
   res.json({ success: true });
@@ -262,6 +264,7 @@ router.delete('/:id', requireAuth, (req, res) => {
   if (!issue) return res.status(404).json({ error: 'Issue not found' });
   if (!req.user.is_admin && issue.user_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
   db.prepare('DELETE FROM issues WHERE id = ?').run(req.params.id);
+  audit({ userId: req.user.id, username: req.user.username, category: 'issue', action: 'Deleted issue', detail: issue.title });
   res.json({ success: true });
 });
 

@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db');
 const { requireAuth, JWT_SECRET } = require('../middleware/auth');
+const { audit } = require('../services/audit');
 
 const router = express.Router();
 const PLEX_CLIENT_ID = process.env.PLEX_CLIENT_ID || 'singarr';
@@ -36,6 +37,7 @@ router.post('/local', async (req, res) => {
   }
 
   db.prepare('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
+  audit({ userId: user.id, username: user.username, category: 'auth', action: 'Admin login' });
 
   const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
   res.json({

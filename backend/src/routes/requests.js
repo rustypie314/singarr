@@ -2,6 +2,7 @@ const express = require('express');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { checkRequestLimit, checkTypeAllowed } = require('../services/limits');
 const { addArtistToLidarr, addAlbumToLidarr } = require('../services/lidarr');
+const { audit } = require('../services/audit');
 const { isInPlexLibrary } = require('../services/plex');
 const { getDb } = require('../db');
 const { notifyRequestFulfilled, notifyRequestApproved, notifyRequestRejected, notifyAdminNewRequest } = require('../services/email');
@@ -154,6 +155,7 @@ router.post('/', requireAuth, async (req, res) => {
     notifyAdminNewRequest(request, req.user.username, admin.email, getAppUrl()).catch(() => {});
   }
 
+  audit({ userId: req.user.id, username: req.user.username, category: 'request', action: 'Submitted request', detail: `${type}: ${title}${artistName ? ' by ' + artistName : ''}` });
   res.status(201).json({ request });
 });
 
@@ -185,6 +187,7 @@ router.delete('/:id', requireAuth, (req, res) => {
   if (!request) return res.status(404).json({ error: 'Not found' });
   if (!req.user.is_admin && request.user_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
   db.prepare('DELETE FROM requests WHERE id = ?').run(req.params.id);
+  audit({ userId: req.user.id, username: req.user.username, category: 'request', action: 'Deleted request', detail: `${request.title}${request.artist_name ? ' by ' + request.artist_name : ''}` });
   res.json({ success: true });
 });
 

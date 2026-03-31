@@ -15,6 +15,8 @@ export default function Admin() {
     return params.get('tab') || 'overview'
   })
   const [stats, setStats] = useState(null)
+  const [auditLogs, setAuditLogs] = useState([])
+  const [auditFilter, setAuditFilter] = useState('all')
   const [settings, setSettings] = useState(null)
   const savedSettings = useRef(null)
   const isDirty = settings !== null && savedSettings.current !== null &&
@@ -105,10 +107,14 @@ export default function Admin() {
     fetchStats()
     fetchSettings()
     fetchUsers()
+    fetchAudit()
   }, [])
 
   async function fetchStats() {
     try { const r = await api.get('/admin/stats'); setStats(r.data) } catch {}
+  }
+  async function fetchAudit() {
+    try { const r = await api.get('/admin/audit', { params: { limit: 200 } }); setAuditLogs(r.data.logs || []) } catch {}
   }
   async function fetchSettings() {
     try {
@@ -322,17 +328,56 @@ export default function Admin() {
 
           {stats.recentRequests?.length > 0 && (
             <div style={styles.card}>
-              <h3 style={{ ...styles.cardTitle, marginBottom: '14px' }}>Recent Requests</h3>
-              {stats.recentRequests.map(r => (
-                <div key={r.id} style={styles.miniRow}>
-                  <span style={styles.miniType}>{r.type}</span>
-                  <span style={styles.miniTitle}>{r.title}</span>
-                  <span style={styles.miniUser}>{r.username}</span>
-                  <StatusBadge status={r.status} size="sm" />
-                </div>
-              ))}
+              <div style={styles.cardHeader}>
+                <h3 style={styles.cardTitle}>Recent Requests</h3>
+              </div>
+              <div style={{ maxHeight: 300, overflowY: 'auto', scrollbarWidth: 'thin', scrollbarColor: 'var(--scrollbar-thumb) transparent' }}>
+                {stats.recentRequests.map(r => (
+                  <div key={r.id} style={styles.miniRow}>
+                    <span style={styles.miniType}>{r.type}</span>
+                    <span style={styles.miniTitle}>{r.title}</span>
+                    <span style={styles.miniUser}>{r.username}</span>
+                    <StatusBadge status={r.status} size="sm" />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
+
+          {/* Recent Activity */}
+          <div style={styles.card}>
+            <div style={styles.cardHeader}>
+              <h3 style={styles.cardTitle}>Recent Activity</h3>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {['all', 'request', 'issue', 'user', 'settings', 'system', 'auth'].map(f => (
+                  <button key={f} onClick={() => setAuditFilter(f)} style={{
+                    fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 999,
+                    border: '1px solid', cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                    background: auditFilter === f ? 'var(--accent-muted)' : 'transparent',
+                    color: auditFilter === f ? 'var(--accent)' : 'var(--text-muted)',
+                    borderColor: auditFilter === f ? 'var(--accent)' : 'var(--border)',
+                  }}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ maxHeight: 320, overflowY: 'auto', scrollbarWidth: 'thin', scrollbarColor: 'var(--scrollbar-thumb) transparent' }}>
+              {(() => {
+                const dotColors = { request: '#2dbe6c', issue: '#e8a30f', user: '#4f9cf9', settings: '#9b7bff', system: '#55555f', auth: '#ef4444' }
+                const filtered = auditFilter === 'all' ? auditLogs : auditLogs.filter(l => l.category === auditFilter)
+                if (!filtered.length) return <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '12px 0' }}>No activity yet.</div>
+                return filtered.map(log => (
+                  <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: dotColors[log.category] || 'var(--text-muted)', flexShrink: 0, marginTop: 5 }} />
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0, width: 110 }}>{new Date(log.created_at + (log.created_at.includes('Z') ? '' : 'Z')).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', flexShrink: 0, width: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.username}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1, lineHeight: 1.4 }}>
+                      {log.action}{log.detail ? <span style={{ color: 'var(--text-muted)' }}> — {log.detail}</span> : ''}
+                    </span>
+                  </div>
+                ))
+              })()}
+            </div>
+          </div>
         </div>
       )}
 

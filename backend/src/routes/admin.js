@@ -3,6 +3,7 @@ const { requireAdmin, requireAuth } = require('../middleware/auth');
 const { getDb } = require('../db');
 
 const router = express.Router();
+const { audit } = require('../services/audit');
 
 // Get all settings — mask sensitive values
 router.get('/settings', requireAdmin, (req, res) => {
@@ -44,6 +45,7 @@ router.put('/settings', requireAdmin, (req, res) => {
     }
   });
   updateMany(Object.entries(settings));
+  audit({ userId: req.user.id, username: req.user.username, category: 'settings', action: 'Saved settings' });
   res.json({ success: true });
 });
 
@@ -87,6 +89,11 @@ router.put('/users/:id', requireAdmin, (req, res) => {
   if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
   values.push(req.params.id);
   db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+
+  // Audit log meaningful user changes
+  if (isApproved !== undefined) audit({ userId: req.user.id, username: req.user.username, category: 'user', action: isApproved ? 'Approved user' : 'Unapproved user', detail: user.username });
+  if (isAdmin !== undefined) audit({ userId: req.user.id, username: req.user.username, category: 'user', action: isAdmin ? 'Promoted to admin' : 'Demoted from admin', detail: user.username });
+
   res.json({ success: true });
 });
 
@@ -94,7 +101,9 @@ router.put('/users/:id', requireAdmin, (req, res) => {
 router.delete('/users/:id', requireAdmin, (req, res) => {
   const db = getDb();
   if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ error: 'Cannot delete yourself' });
+  const delUser = db.prepare('SELECT username FROM users WHERE id = ?').get(req.params.id);
   db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
+  if (delUser) audit({ userId: req.user.id, username: req.user.username, category: 'user', action: 'Deleted user', detail: delUser.username });
   res.json({ success: true });
 });
 
@@ -133,7 +142,7 @@ router.get('/stats', requireAdmin, (req, res) => {
   const plexCacheCount = db.prepare('SELECT COUNT(*) as c FROM plex_library_cache').get().c;
   const recentRequests = db.prepare(`
     SELECT r.*, u.username FROM requests r JOIN users u ON r.user_id = u.id
-    ORDER BY r.created_at DESC LIMIT 5
+    ORDER BY r.created_at DESC LIMIT 50
   `).all();
 
   // Analytics data
@@ -176,6 +185,28 @@ router.get('/stats', requireAdmin, (req, res) => {
     totalRequests, pendingRequests, downloadedRequests, totalUsers, plexCacheCount, recentRequests,
     analytics: { requestsByDay, requestsByType, requestsByStatus, topRequesters, topArtists, avgPerDay },
   });
+});
+
+// GET /admin/audit — full audit log (admin) or own activity (user)
+router.get('/audit', requireAuth, (req, res) => {
+  const db = getDb();
+  const { category, limit = 100 } = req.query;
+  let query, params;
+  if (req.user.is_admin) {
+    query = category && category !== 'all'
+      ? 'SELECT * FROM audit_log WHERE category = ? ORDER BY created_at DESC LIMIT ?'
+      : 'SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?';
+    params = category && category !== 'all' ? [category, Number(limit)] : [Number(limit)];
+  } else {
+    query = category && category !== 'all'
+      ? 'SELECT * FROM audit_log WHERE user_id = ? AND category = ? ORDER BY created_at DESC LIMIT ?'
+      : 'SELECT * FROM audit_log WHERE user_id = ? ORDER BY created_at DESC LIMIT ?';
+    params = category && category !== 'all'
+      ? [req.user.id, category, Number(limit)]
+      : [req.user.id, Number(limit)];
+  }
+  const logs = db.prepare(query).all(...params);
+  res.json({ logs });
 });
 
 module.exports = router;

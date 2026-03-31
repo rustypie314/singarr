@@ -178,6 +178,7 @@ async function syncPlexLibrary() {
   }
 
   console.log(`[Plex] Synced library: ${totalArtists} artists, ${totalAlbums} albums`);
+  try { require('./audit').audit({ userId: null, username: 'system', category: 'system', action: 'Plex library synced', detail: `${totalArtists} artists, ${totalAlbums} albums` }); } catch {}
 
   // Invalidate discover cache so next page load picks up new library content
   try {

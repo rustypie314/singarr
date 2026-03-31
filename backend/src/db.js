@@ -95,6 +95,16 @@ function initSchema() {
       fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      username TEXT,
+      category TEXT NOT NULL,
+      action TEXT NOT NULL,
+      detail TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS issue_notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       issue_id INTEGER NOT NULL,
@@ -197,7 +207,16 @@ function runMigrations() {
   if (!plexCols.includes('genres')) db.exec('ALTER TABLE plex_library_cache ADD COLUMN genres TEXT');
 
   // issue_notes table for existing installs
-  const tables2 = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);  if (!tables2.includes('issue_notes')) {
+  const tables2 = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);
+  if (!tables2.includes('audit_log')) {
+    db.exec(`CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER, username TEXT, category TEXT NOT NULL,
+      action TEXT NOT NULL, detail TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+  }
+  if (!tables2.includes('issue_notes')) {
     db.exec(`
       CREATE TABLE issue_notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
