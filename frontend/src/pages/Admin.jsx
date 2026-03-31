@@ -621,8 +621,7 @@ export default function Admin() {
                         {[0,5,10,20,50,100,200].map(n => <option key={n} value={n}>{n === 0 ? 'Unlimited' : n}</option>)}
                       </select>
                     </div>
-                    {!u.is_local_admin && <Toggle value={!!u.is_approved} onChange={v => updateUser(u.id, { isApproved: v })} label="Approved" />}
-                    {!u.is_local_admin && <Toggle value={!!u.is_admin} onChange={v => updateUser(u.id, { isAdmin: v })} label="Admin" />}
+                    {!u.is_local_admin && u.is_approved && <Toggle value={!!u.is_admin} onChange={v => updateUser(u.id, { isAdmin: v })} label="Admin" />}
                   </div>
                 </div>
               )

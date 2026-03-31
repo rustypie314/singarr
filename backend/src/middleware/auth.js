@@ -17,7 +17,6 @@ function requireAuth(req, res, next) {
     const db = getDb();
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.userId);
     if (!user) return res.status(401).json({ error: 'User not found' });
-    if (!user.is_approved) return res.status(403).json({ error: 'Account pending approval' });
     req.user = user;
     next();
   } catch (e) {

@@ -71,7 +71,13 @@ router.put('/users/:id', requireAdmin, (req, res) => {
 
   const updates = [];
   const values = [];
-  if (isApproved !== undefined) { updates.push('is_approved = ?'); values.push(isApproved ? 1 : 0); }
+  if (isApproved !== undefined) {
+    // Once approved, a user cannot be un-approved — remove them instead
+    if (!isApproved && user.is_approved) {
+      return res.status(400).json({ error: 'Approved users cannot be un-approved. Remove the user instead.' });
+    }
+    updates.push('is_approved = ?'); values.push(isApproved ? 1 : 0);
+  }
   if (isAdmin !== undefined) { updates.push('is_admin = ?'); values.push(isAdmin ? 1 : 0); }
   if (requestLimitOverride !== undefined) {
     updates.push('request_limit_override = ?');
