@@ -25,8 +25,9 @@ export default function Requests() {
   }
 
   const [confirmDelete, setConfirmDelete] = useState(null)
-  const [rejectModal, setRejectModal]     = useState(null) // holds request to reject
+  const [rejectModal, setRejectModal]     = useState(null)
   const [rejectNote, setRejectNote]       = useState('')
+  const [reasonModal, setReasonModal]     = useState(null) // holds rejected request to show reason
 
   async function deleteRequest(id) {
     try {
@@ -39,7 +40,7 @@ export default function Requests() {
   async function updateStatus(id, status, note = '') {
     try {
       await api.put(`/requests/${id}/status`, { status, note })
-      setRequests(r => r.map(x => x.id === id ? { ...x, status } : x))
+      setRequests(r => r.map(x => x.id === id ? { ...x, status, notes: note || null } : x))
       toast.success(status === 'approved' ? 'Request approved' : 'Request rejected')
     } catch { toast.error('Failed to update request') }
   }
@@ -140,7 +141,16 @@ export default function Requests() {
 
               {/* Status */}
               <div style={styles.rowStatus} className="req-status-col">
-                {req.status === 'downloaded' && req.quality ? (() => {
+                {req.status === 'rejected' ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <StatusBadge status={req.status} />
+                    <button onClick={() => setReasonModal(req)}
+                      title="View rejection reason"
+                      style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: 11, fontStyle: 'italic', fontFamily: 'Georgia, serif', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, padding: 0 }}>
+                      i
+                    </button>
+                  </div>
+                ) : req.status === 'downloaded' && req.quality ? (() => {
                   const qualityLabel = req.quality === '24bit-flac' ? '24-bit FLAC'
                                      : req.quality === '16bit-flac' ? '16-bit FLAC'
                                      : req.quality === 'flac'       ? 'FLAC' : null
@@ -244,6 +254,31 @@ export default function Requests() {
                 ✕ Reject
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rejection reason modal */}
+      {reasonModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={() => setReasonModal(null)}>
+          <div className="modal-mobile" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 28, maxWidth: 400, width: '100%', boxShadow: '0 32px 64px rgba(0,0,0,0.4)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 20, marginBottom: 8 }}>✕</div>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Request rejected</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              {reasonModal.title}{reasonModal.artist_name ? ` — ${reasonModal.artist_name}` : ''}
+            </p>
+            {reasonModal.notes
+              ? <div style={{ background: 'var(--bg-overlay)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 20 }}>
+                  {reasonModal.notes}
+                </div>
+              : <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 20 }}>No reason was provided.</p>
+            }
+            <button onClick={() => setReasonModal(null)}
+              style={{ width: '100%', padding: 11, background: 'var(--bg-overlay)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
+              Close
+            </button>
           </div>
         </div>
       )}

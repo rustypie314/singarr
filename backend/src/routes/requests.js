@@ -198,8 +198,8 @@ router.put('/:id/status', requireAdmin, async (req, res) => {
   const request = db.prepare('SELECT * FROM requests WHERE id = ?').get(req.params.id);
   if (!request) return res.status(404).json({ error: 'Request not found' });
 
-  db.prepare('UPDATE requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-    .run(status, req.params.id);
+  db.prepare('UPDATE requests SET status = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+    .run(status, note || null, req.params.id);
 
   // Send email notifications
   try {
