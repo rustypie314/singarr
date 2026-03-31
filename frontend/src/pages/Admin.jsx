@@ -422,6 +422,9 @@ export default function Admin() {
                     </button>
                   ))}
                 </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>
+                  ℹ This setting only applies to the local admin account. All other Plex users always open via Plex Web.
+                </div>
               </div>
             </div>
 

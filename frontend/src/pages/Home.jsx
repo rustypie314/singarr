@@ -64,7 +64,48 @@ function ScrollRow({ title, items, renderCard, emptyMsg, loading }) {
 }
 
 // ── Library card (artist or album from Plex) ──────────────
+// SVG icons for Plex buttons
+const GlobeIcon  = () => <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#e5a00d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+const MonitorIcon = () => <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4f9cf9" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+const PersonIcon  = () => <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#e5a00d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+const DiscIcon    = () => <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#e5a00d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+
+const btnWeb   = { fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(229,160,13,0.12)', color: '#e5a00d', border: '1px solid rgba(229,160,13,0.3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }
+const btnLocal = { fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(79,156,249,0.12)', color: '#4f9cf9', border: '1px solid rgba(79,156,249,0.3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }
+
+function PlexButtons({ plexConfig, ratingKey, isArtist, isAdmin }) {
+  const machineId  = plexConfig?.machineId
+  const localUrl   = plexConfig?.localUrl?.replace(/\/$/, '')
+  const effectiveMode = isAdmin ? (plexConfig?.openMode || 'web') : 'web'
+  if (!ratingKey || !machineId) return null
+  const detailPath = `#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${ratingKey}`
+  const webLink    = `https://app.plex.tv/desktop/${detailPath}`
+  const localLink  = localUrl ? `${localUrl}/web/index.html${detailPath}` : null
+
+  // Both mode — show original globe + computer icons
+  if (effectiveMode === 'both') {
+    return (
+      <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+        <a href={webLink} target="_blank" rel="noreferrer" style={btnWeb}><GlobeIcon /> Open in Plex</a>
+        {localLink && <a href={localLink} target="_blank" rel="noreferrer" style={btnLocal}><MonitorIcon /> Open in Plex</a>}
+      </div>
+    )
+  }
+
+  // Single button — person icon for artists, disc icon for albums
+  const href = effectiveMode === 'local' && localLink ? localLink : webLink
+  return (
+    <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+      <a href={href} target="_blank" rel="noreferrer" style={btnWeb}>
+        {isArtist ? <PersonIcon /> : <DiscIcon />}
+        Open in Plex
+      </a>
+    </div>
+  )
+}
+
 function LibraryCard({ item, type, plexConfig }) {
+  const { user } = useAuth()
   const [imgLoaded, setImgLoaded] = useState(false)
   const [imgError, setImgError]   = useState(false)
   const isArtist = type === 'artist'
@@ -80,22 +121,8 @@ function LibraryCard({ item, type, plexConfig }) {
                    : item.quality === '16bit-flac' ? { bg: 'rgba(15,110,86,0.85)', color: '#9FE1CB' }
                    : { bg: 'rgba(26,122,69,0.85)', color: '#fff' }
 
-  // Build Open in Plex URLs
-  const ratingKey = item.plex_rating_key
-  const machineId = plexConfig?.machineId
-  const openMode  = plexConfig?.openMode || 'both'
-  const localUrl  = plexConfig?.localUrl?.replace(/\/$/, '')
-  const detailPath = ratingKey && machineId ? `#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${ratingKey}` : null
-  const webLink   = detailPath ? `https://app.plex.tv/desktop/${detailPath}` : null
-  const localLink = detailPath && localUrl ? `${localUrl}/web/index.html${detailPath}` : null
-  const showOpenInPlex = detailPath && (openMode === 'web' || openMode === 'local' || openMode === 'both')
-
   return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.15 }}
-      style={r.card}
-    >
+    <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.15 }} style={r.card}>
       <div style={{ ...r.cardArt, borderRadius: isArtist ? '50%' : 10, overflow: 'hidden' }}>
         {!imgLoaded && !imgError && imgSrc && <div className="skeleton" style={{ position: 'absolute', inset: 0, borderRadius: isArtist ? '50%' : 10 }} />}
         {imgSrc && !imgError
@@ -114,46 +141,16 @@ function LibraryCard({ item, type, plexConfig }) {
           {badgeText}
         </span>
       </div>
-      {showOpenInPlex && (
-        <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
-          {(openMode === 'web' || openMode === 'both') && webLink && (
-            <a href={webLink} target="_blank" rel="noreferrer"
-              style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(229,160,13,0.12)', color: '#e5a00d', border: '1px solid rgba(229,160,13,0.3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#e5a00d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-              </svg>
-              Open in Plex
-            </a>
-          )}
-          {(openMode === 'local' || openMode === 'both') && localLink && (
-            <a href={localLink} target="_blank" rel="noreferrer"
-              style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(79,156,249,0.12)', color: '#4f9cf9', border: '1px solid rgba(79,156,249,0.3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4f9cf9" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-              </svg>
-              Open in Plex
-            </a>
-          )}
-        </div>
-      )}
+      <PlexButtons plexConfig={plexConfig} ratingKey={item.plex_rating_key} isArtist={isArtist} isAdmin={user?.isAdmin} />
     </motion.div>
   )
 }
 
 // ── Request card ──────────────────────────────────────────
 function RequestCard({ req, plexConfig }) {
+  const { user } = useAuth()
   const [imgLoaded, setImgLoaded] = useState(false)
   const [imgError, setImgError]   = useState(false)
-
-  const ratingKey = req.plex_rating_key
-  const machineId = plexConfig?.machineId
-  const openMode  = plexConfig?.openMode || 'both'
-  const localUrl  = plexConfig?.localUrl?.replace(/\/$/, '')
-  const detailPath = ratingKey && machineId ? `#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${ratingKey}` : null
-  const webLink   = detailPath ? `https://app.plex.tv/desktop/${detailPath}` : null
-  const localLink = detailPath && localUrl ? `${localUrl}/web/index.html${detailPath}` : null
-  const showOpenInPlex = detailPath && (openMode === 'web' || openMode === 'local' || openMode === 'both')
 
   return (
     <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.15 }} style={r.card}>
@@ -185,35 +182,13 @@ function RequestCard({ req, plexConfig }) {
         })()
         : <StatusBadge status={req.status} size="sm" />}
       </div>
-      {showOpenInPlex && (
-        <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
-          {(openMode === 'web' || openMode === 'both') && webLink && (
-            <a href={webLink} target="_blank" rel="noreferrer"
-              style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(229,160,13,0.12)', color: '#e5a00d', border: '1px solid rgba(229,160,13,0.3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#e5a00d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-              </svg>
-              Open in Plex
-            </a>
-          )}
-          {(openMode === 'local' || openMode === 'both') && localLink && (
-            <a href={localLink} target="_blank" rel="noreferrer"
-              style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(79,156,249,0.12)', color: '#4f9cf9', border: '1px solid rgba(79,156,249,0.3)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4f9cf9" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-              </svg>
-              Open in Plex
-            </a>
-          )}
-        </div>
-      )}
+      <PlexButtons plexConfig={plexConfig} ratingKey={req.plex_rating_key} isArtist={false} isAdmin={user?.isAdmin} />
     </motion.div>
   )
 }
 
 export default function Home() {
-  const { api } = useAuth()
+  const { api, user } = useAuth()
 
   // Search state
   const [tab, setTab]       = useState('top')
