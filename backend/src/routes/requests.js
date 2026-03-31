@@ -72,6 +72,14 @@ router.get('/all', requireAuth, (req, res) => {
   res.json({ requests: enriched, plexConfig });
 });
 
+// Get request settings needed by frontend (approval status) — no sensitive data
+router.get('/settings', requireAuth, (req, res) => {
+  const db = getDb();
+  const requireApproval = db.prepare("SELECT value FROM settings WHERE key = 'require_approval'").get()?.value || 'false';
+  const autoApprovePlexUsers = db.prepare("SELECT value FROM settings WHERE key = 'auto_approve_plex_users'").get()?.value || 'false';
+  res.json({ requireApproval, autoApprovePlexUsers });
+});
+
 // Get request limit status for current user
 router.get('/limits', requireAuth, (req, res) => {
   const album = checkRequestLimit(req.user, 'album');

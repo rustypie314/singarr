@@ -4,10 +4,11 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import toast from 'react-hot-toast'
 
 export default function RequestModal({ item, type, onClose, onSuccess }) {
-  const { api } = useAuth()
+  const { api, user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [similar, setSimilar] = useState([])
+  const [requiresApproval, setRequiresApproval] = useState(false)
 
   useEffect(() => {
     if (!item) return
@@ -15,6 +16,16 @@ export default function RequestModal({ item, type, onClose, onSuccess }) {
     if (type === 'artist' && item.id) {
       api.get(`/search/artist/${item.id}`, { params: { name: item.name } })
         .then(r => setSimilar(r.data.similar || []))
+        .catch(() => {})
+    }
+    // Check if admin approval is required (non-admins only)
+    if (!user?.isAdmin) {
+      api.get('/requests/settings')
+        .then(r => {
+          const needsApproval = r.data.requireApproval === 'true'
+          const autoApprove = r.data.autoApprovePlexUsers === 'true'
+          setRequiresApproval(needsApproval && !autoApprove)
+        })
         .catch(() => {})
     }
   }, [item?.id])
@@ -91,7 +102,12 @@ export default function RequestModal({ item, type, onClose, onSuccess }) {
                 )}
 
                 <p style={styles.confirmText}>
-                  Send this {type} to Lidarr for acquisition?
+                  Add this {type} to your music library?
+                  {requiresApproval && (
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+                      ⏳ Requires admin approval.
+                    </span>
+                  )}
                 </p>
 
                 <div style={styles.actions}>
