@@ -700,7 +700,7 @@ export default function Admin() {
       {/* Notifications tab */}
       {tab === 'notifications' && settings && (
         <div style={styles.section}>
-          <NotificationsTab api={api} settings={settings} setSettings={setSettings} saveSettings={saveSettings} saving={saving} />
+          <NotificationsTab api={api} settings={settings} setSettings={setSettings} saveSettings={saveSettings} saving={saving} isDirty={isDirty} />
         </div>
       )}
 
@@ -885,7 +885,7 @@ export default function Admin() {
   )
 }
 
-function NotificationsTab({ api, settings, setSettings, saveSettings, saving }) {
+function NotificationsTab({ api, settings, setSettings, saveSettings, saving, isDirty }) {
   const [testing, setTesting]       = useState(false)
   const [testResult, setTestResult] = useState(null)
   const [testEmail, setTestEmail]   = useState('')
