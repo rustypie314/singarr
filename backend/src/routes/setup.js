@@ -111,7 +111,12 @@ router.get('/plex/pin/:pinId', async (req, res) => {
 
 // ── Step 2: Test Lidarr connection ────────────────────────
 router.post('/test/lidarr', async (req, res) => {
-  const { url, apiKey } = req.body;
+  const db = getDb();
+  const MASK = '••••••••';
+  const url = req.body.url;
+  const apiKey = req.body.apiKey === MASK
+    ? db.prepare("SELECT value FROM settings WHERE key = 'lidarr_api_key'").get()?.value
+    : req.body.apiKey;
   if (!url || !apiKey) return res.status(400).json({ ok: false, error: 'URL and API key required' });
   try {
     const response = await axios.get(`${url.replace(/\/$/, '')}/api/v1/system/status`, {
@@ -126,7 +131,11 @@ router.post('/test/lidarr', async (req, res) => {
 
 // ── Step 3: Test Last.fm ──────────────────────────────────
 router.post('/test/lastfm', async (req, res) => {
-  const { apiKey } = req.body;
+  const db = getDb();
+  const MASK = '••••••••';
+  const apiKey = req.body.apiKey === MASK
+    ? db.prepare("SELECT value FROM settings WHERE key = 'lastfm_api_key'").get()?.value
+    : req.body.apiKey;
   if (!apiKey) return res.status(400).json({ ok: false, error: 'API key required' });
   try {
     const response = await axios.get('https://ws.audioscrobbler.com/2.0/', {
@@ -142,7 +151,11 @@ router.post('/test/lastfm', async (req, res) => {
 
 // ── Step 3: Test Fanart.tv ────────────────────────────────
 router.post('/test/fanart', async (req, res) => {
-  const { apiKey } = req.body;
+  const db = getDb();
+  const MASK = '••••••••';
+  const apiKey = req.body.apiKey === MASK
+    ? db.prepare("SELECT value FROM settings WHERE key = 'fanart_api_key'").get()?.value
+    : req.body.apiKey;
   if (!apiKey) return res.status(400).json({ ok: false, error: 'API key required' });
   try {
     await axios.get('https://webservice.fanart.tv/v3/music/b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d', {
@@ -160,7 +173,12 @@ router.post('/test/fanart', async (req, res) => {
 
 // ── Step 3: Test Plex server ──────────────────────────────
 router.post('/test/plex', async (req, res) => {
-  const { url, token } = req.body;
+  const db = getDb();
+  const MASK = '••••••••';
+  const url = req.body.url;
+  const token = req.body.token === MASK
+    ? db.prepare("SELECT value FROM settings WHERE key = 'plex_token'").get()?.value
+    : req.body.token;
   if (!url || !token) return res.status(400).json({ ok: false, error: 'URL and token required' });
   try {
     const baseUrl = url.replace(/\/$/, '');
