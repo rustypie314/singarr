@@ -220,7 +220,12 @@ module.exports = router;
 // Test email connection
 router.post('/test-email', requireAdmin, async (req, res) => {
   const { testEmailConfig } = require('../services/email');
-  const { host, port, secure, user, pass } = req.body;
+  const db = getDb();
+  const MASK = '••••••••';
+  const { host, port, secure, user } = req.body;
+  const pass = req.body.pass === MASK
+    ? db.prepare("SELECT value FROM settings WHERE key = 'email_pass'").get()?.value
+    : req.body.pass;
   const result = await testEmailConfig({ host, port: parseInt(port || 587), secure: secure === 'true' || secure === true, user, pass });
   res.json(result);
 });
@@ -228,10 +233,14 @@ router.post('/test-email', requireAdmin, async (req, res) => {
 // Send test email
 router.post('/test-email/send', requireAdmin, async (req, res) => {
   const { getEmailConfig, createTransport } = require('../services/email');
-  const { to, host, port, secure, user, pass, from, fromName } = req.body;
+  const db = getDb();
+  const MASK = '••••••••';
+  const { to, host, port, secure, user, from, fromName } = req.body;
+  const pass = req.body.pass === MASK
+    ? db.prepare("SELECT value FROM settings WHERE key = 'email_pass'").get()?.value
+    : req.body.pass;
   if (!to) return res.status(400).json({ error: 'Recipient email required' });
 
-  // Use posted values if provided, fall back to saved config
   const saved = getEmailConfig();
   const config = {
     host:     host     || saved.host,
