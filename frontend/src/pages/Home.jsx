@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import RequestModal from '../components/RequestModal.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
-import { proxyCover } from '../utils/date.js'
+import { proxyCover, qualityBadge } from '../utils/date.js'
 import LimitBar from '../components/LimitBar.jsx'
 import { IconMicrophone, IconDisc, IconMusicNote, IconSearch, IconPlus, IconDownload, IconRefresh } from '../components/Icons.jsx'
 import { TypeIcon } from '../components/Icons.jsx'
@@ -112,15 +112,9 @@ function LibraryCard({ item, type, plexConfig }) {
   const isArtist = type === 'artist'
   const imgSrc   = item.imageUrl || null
 
-  const qualityLabel = item.quality === '24bit-flac' ? '24-bit FLAC'
-                     : item.quality === '16bit-flac' ? '16-bit FLAC'
-                     : item.quality === 'flac'       ? 'FLAC'
-                     : null
-
-  const badgeText = qualityLabel ? `✓ In Plex · ${qualityLabel}` : '✓ In Plex'
-  const badgeColor = item.quality === '24bit-flac' ? { bg: 'rgba(24,95,165,0.85)', color: '#B5D4F4' }
-                   : item.quality === '16bit-flac' ? { bg: 'rgba(15,110,86,0.85)', color: '#9FE1CB' }
-                   : { bg: 'rgba(26,122,69,0.85)', color: '#fff' }
+  const qb = qualityBadge(item.quality)
+  const badgeText = qb ? `✓ In Plex · ${qb.label}` : '✓ In Plex'
+  const badgeColor = qb || { bg: 'rgba(26,122,69,0.85)', color: '#fff' }
 
   return (
     <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.15 }} style={r.card}>
@@ -170,14 +164,10 @@ function RequestCard({ req, plexConfig }) {
       <div style={r.cardSub}>{req.artist_name || req.username}</div>
       <div style={{ marginTop: 4 }}>
         {req.status === 'downloaded' && req.quality ? (() => {
-          const qualityLabel = req.quality === '24bit-flac' ? '24-bit FLAC'
-                             : req.quality === '16bit-flac' ? '16-bit FLAC'
-                             : req.quality === 'flac'       ? 'FLAC' : null
-          const bg    = req.quality === '24bit-flac' ? 'rgba(24,95,165,0.85)'  : 'rgba(15,110,86,0.85)'
-          const color = req.quality === '24bit-flac' ? '#B5D4F4'               : '#9FE1CB'
-          return qualityLabel
-            ? <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: bg, color, display: 'inline-block' }}>
-                ✓ Downloaded · {qualityLabel}
+          const qb = qualityBadge(req.quality)
+          return qb
+            ? <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: qb.bg, color: qb.color, display: 'inline-block' }}>
+                ✓ Downloaded · {qb.label}
               </span>
             : <StatusBadge status={req.status} size="sm" />
         })()
@@ -801,20 +791,12 @@ function ArtistRow({ item, index, expanded, albums, page, onSetPage, onExpand, o
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                         {album.inPlex
                           ? (() => {
-                              const ql = album.quality === '24bit-flac' ? '24-bit FLAC'
-                                       : album.quality === '16bit-flac' ? '16-bit FLAC'
-                                       : album.quality === 'flac'       ? 'FLAC' : null
-                              const bg = album.quality === '24bit-flac' ? 'rgba(24,95,165,0.15)'
-                                       : album.quality === '16bit-flac' ? 'rgba(15,110,86,0.15)'
-                                       : 'rgba(26,122,69,0.15)'
-                              const color = album.quality === '24bit-flac' ? '#4f9cf9'
-                                          : album.quality === '16bit-flac' ? '#2dbe6c'
-                                          : 'var(--accent)'
-                              const border = album.quality === '24bit-flac' ? 'rgba(24,95,165,0.3)'
-                                           : album.quality === '16bit-flac' ? 'rgba(15,110,86,0.3)'
-                                           : 'rgba(26,122,69,0.3)'
+                              const qb = qualityBadge(album.quality)
+                              const bg = qb ? qb.bg.replace('0.85', '0.15') : 'rgba(26,122,69,0.15)'
+                              const color = qb ? qb.color : 'var(--accent)'
+                              const border = qb ? qb.bg.replace('0.85', '0.3') : 'rgba(26,122,69,0.3)'
                               return <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: bg, color, border: `1px solid ${border}` }}>
-                                {ql ? `✓ In Plex · ${ql}` : '✓ In Plex'}
+                                {qb ? `✓ In Plex · ${qb.label}` : '✓ In Plex'}
                               </span>
                             })()
                           : album.requestStatus
@@ -919,20 +901,12 @@ function AlbumRow({ item, index, expanded, tracks, onExpand, onRequestAlbum, onR
         </div>
         <div style={styles.rowRight}>
           {item.inPlex && (() => {
-            const ql = item.quality === '24bit-flac' ? '24-bit FLAC'
-                     : item.quality === '16bit-flac' ? '16-bit FLAC'
-                     : item.quality === 'flac'       ? 'FLAC' : null
-            const bg = item.quality === '24bit-flac' ? 'rgba(24,95,165,0.15)'
-                     : item.quality === '16bit-flac' ? 'rgba(15,110,86,0.15)'
-                     : 'rgba(26,122,69,0.15)'
-            const color = item.quality === '24bit-flac' ? '#4f9cf9'
-                        : item.quality === '16bit-flac' ? '#2dbe6c'
-                        : 'var(--accent)'
-            const border = item.quality === '24bit-flac' ? 'rgba(24,95,165,0.3)'
-                         : item.quality === '16bit-flac' ? 'rgba(15,110,86,0.3)'
-                         : 'rgba(26,122,69,0.3)'
+            const qb = qualityBadge(item.quality)
+            const bg = qb ? qb.bg.replace('0.85', '0.15') : 'rgba(26,122,69,0.15)'
+            const color = qb ? qb.color : 'var(--accent)'
+            const border = qb ? qb.bg.replace('0.85', '0.3') : 'rgba(26,122,69,0.3)'
             return <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: bg, color, border: `1px solid ${border}` }}>
-              {ql ? `✓ In Plex · ${ql}` : 'In Plex'}
+              {qb ? `✓ In Plex · ${qb.label}` : 'In Plex'}
             </span>
           })()}
           {item.requestStatus && <StatusBadge status={item.requestStatus} size="sm" />}

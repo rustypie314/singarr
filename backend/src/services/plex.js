@@ -91,14 +91,21 @@ async function syncPlexLibrary() {
           params: { includeMedia: 1, includeStreams: 1 }
         });
         const tracks = res.data?.MediaContainer?.Metadata || [];
-        let maxBitDepth = 0;
-        let hasFlac = false;
+        let maxBitDepth = 0, maxMp3Bitrate = 0;
+        let hasFlac = false, hasWav = false, hasAac = false, hasOgg = false;
         for (const track of tracks) {
           const media = track.Media?.[0];
           if (!media) continue;
           const codec = (media.audioCodec || '').toLowerCase();
           const container = (media.container || '').toLowerCase();
           if (codec === 'flac' || container === 'flac') hasFlac = true;
+          else if (codec === 'pcm' || container === 'wav') hasWav = true;
+          else if (codec === 'aac' || container === 'aac' || container === 'm4a') hasAac = true;
+          else if (codec === 'vorbis' || container === 'ogg') hasOgg = true;
+          else if (codec === 'mp3' || container === 'mp3') {
+            const br = media.bitrate || 0;
+            if (br > maxMp3Bitrate) maxMp3Bitrate = br;
+          }
           let bitDepth = media.bitDepth || 0;
           if (!bitDepth) {
             const streams = media.Part?.[0]?.Stream || [];
@@ -109,25 +116,37 @@ async function syncPlexLibrary() {
           if (!bitDepth) bitDepth = media.Part?.[0]?.bitDepth || 0;
           if (bitDepth > maxBitDepth) maxBitDepth = bitDepth;
         }
-        if (!hasFlac) return null;
-        if (maxBitDepth >= 24) return '24bit-flac';
-        if (maxBitDepth >= 16) return '16bit-flac';
-        // FLAC confirmed but bit depth not found — fetch first track individually
-        if (tracks[0]) {
-          try {
-            const trackRes = await client.get(`/library/metadata/${tracks[0].ratingKey}`, {
-              params: { includeStreams: 1 }
-            });
-            const tMedia = trackRes.data?.MediaContainer?.Metadata?.[0]?.Media?.[0];
-            const bd = tMedia?.bitDepth
-                    || tMedia?.Part?.[0]?.bitDepth
-                    || tMedia?.Part?.[0]?.Stream?.find(s => s.bitDepth)?.bitDepth
-                    || 0;
-            if (bd >= 24) return '24bit-flac';
-            if (bd >= 16) return '16bit-flac';
-          } catch {}
+
+        // Return best quality found
+        if (hasFlac) {
+          if (maxBitDepth >= 24) return '24bit-flac';
+          if (maxBitDepth >= 16) return '16bit-flac';
+          // FLAC confirmed but bit depth not found — fetch first track individually
+          if (tracks[0]) {
+            try {
+              const trackRes = await client.get(`/library/metadata/${tracks[0].ratingKey}`, {
+                params: { includeStreams: 1 }
+              });
+              const tMedia = trackRes.data?.MediaContainer?.Metadata?.[0]?.Media?.[0];
+              const bd = tMedia?.bitDepth
+                      || tMedia?.Part?.[0]?.bitDepth
+                      || tMedia?.Part?.[0]?.Stream?.find(s => s.bitDepth)?.bitDepth
+                      || 0;
+              if (bd >= 24) return '24bit-flac';
+              if (bd >= 16) return '16bit-flac';
+            } catch {}
+          }
+          return 'flac';
         }
-        return 'flac';
+        if (hasWav) return 'wav';
+        if (maxMp3Bitrate >= 300) return 'mp3-320';
+        if (maxMp3Bitrate >= 240) return 'mp3-256';
+        if (maxMp3Bitrate >= 176) return 'mp3-192';
+        if (maxMp3Bitrate >= 100) return 'mp3-128';
+        if (maxMp3Bitrate > 0)    return 'mp3';
+        if (hasAac) return 'aac';
+        if (hasOgg) return 'ogg';
+        return null;
       } catch { return null; }
     }
 

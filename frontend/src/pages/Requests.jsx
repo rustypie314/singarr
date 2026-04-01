@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { TypeIcon, IconRefresh, IconTrash } from '../components/Icons.jsx'
 import toast from 'react-hot-toast'
-import { formatDateShort, proxyCover } from '../utils/date.js'
+import { formatDateShort, proxyCover, qualityBadge } from '../utils/date.js'
 
 export default function Requests() {
   const { api, user } = useAuth()
@@ -151,14 +151,10 @@ export default function Requests() {
                     </button>
                   </div>
                 ) : req.status === 'downloaded' && req.quality ? (() => {
-                  const qualityLabel = req.quality === '24bit-flac' ? '24-bit FLAC'
-                                     : req.quality === '16bit-flac' ? '16-bit FLAC'
-                                     : req.quality === 'flac'       ? 'FLAC' : null
-                  const bg    = req.quality === '24bit-flac' ? 'rgba(24,95,165,0.85)' : 'rgba(15,110,86,0.85)'
-                  const color = req.quality === '24bit-flac' ? '#B5D4F4' : '#9FE1CB'
-                  return qualityLabel
-                    ? <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999, background: bg, color, display: 'inline-block' }}>
-                        ✓ Downloaded · {qualityLabel}
+                  const qb = qualityBadge(req.quality)
+                  return qb
+                    ? <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999, background: qb.bg, color: qb.color, display: 'inline-block' }}>
+                        ✓ Downloaded · {qb.label}
                       </span>
                     : <StatusBadge status={req.status} />
                 })()
