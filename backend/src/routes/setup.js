@@ -210,6 +210,29 @@ router.post('/test/plex', async (req, res) => {
   }
 });
 
+// ── Test Discogs ──────────────────────────────────────────
+router.post('/test/discogs', async (req, res) => {
+  const db = getDb();
+  const MASK = '••••••••';
+  const apiKey = req.body.apiKey === MASK
+    ? db.prepare("SELECT value FROM settings WHERE key = 'discogs_api_key'").get()?.value
+    : req.body.apiKey;
+  if (!apiKey) return res.status(400).json({ ok: false, error: 'Token required' });
+  try {
+    await axios.get('https://api.discogs.com/database/search', {
+      params: { q: 'test', per_page: 1 },
+      headers: { Authorization: `Discogs token=${apiKey}`, 'User-Agent': 'Singarr/1.0' },
+      timeout: 8000,
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    if (e.response?.status === 401 || e.response?.status === 403) {
+      return res.json({ ok: false, error: 'Invalid token' });
+    }
+    res.json({ ok: false, error: 'Could not connect to Discogs' });
+  }
+});
+
 // ── Step 4: Fetch Plex users ──────────────────────────────
 router.post('/plex/users', async (req, res) => {
   const { plexToken, plexUrl } = req.body;

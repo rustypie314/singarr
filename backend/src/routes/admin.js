@@ -9,7 +9,7 @@ const { audit } = require('../services/audit');
 router.get('/settings', requireAdmin, (req, res) => {
   const db = getDb();
   const rows = db.prepare('SELECT key, value FROM settings').all();
-  const SENSITIVE = new Set(['email_pass', 'plex_token', 'lidarr_api_key', 'lastfm_api_key', 'fanart_api_key']);
+  const SENSITIVE = new Set(['email_pass', 'plex_token', 'lidarr_api_key', 'lastfm_api_key', 'fanart_api_key', 'discogs_api_key']);
   const settings = {};
   rows.forEach(r => {
     settings[r.key] = SENSITIVE.has(r.key) && r.value ? '••••••••' : r.value;
@@ -33,7 +33,7 @@ router.put('/settings', requireAdmin, (req, res) => {
     plex_token:     'PLEX_TOKEN',
   };
 
-  const SENSITIVE = new Set(['email_pass', 'plex_token', 'lidarr_api_key', 'lastfm_api_key', 'fanart_api_key']);
+  const SENSITIVE = new Set(['email_pass', 'plex_token', 'lidarr_api_key', 'lastfm_api_key', 'fanart_api_key', 'discogs_api_key']);
   const update = db.prepare('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)');
   const updateMany = db.transaction((entries) => {
     for (const [key, value] of entries) {

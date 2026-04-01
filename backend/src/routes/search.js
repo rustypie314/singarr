@@ -89,7 +89,47 @@ async function getCoverArt(mbid, artistName, albumTitle) {
     } catch {}
   }
 
-  // 4. Plex thumb (if already in library)
+  // 4. iTunes album art
+  if (artistName && albumTitle) {
+    try {
+      const res = await axios.get('https://itunes.apple.com/search', {
+        params: { term: `${artistName} ${albumTitle}`, media: 'music', entity: 'album', limit: 1 },
+        timeout: 5000,
+      });
+      const artwork = res.data?.results?.[0]?.artworkUrl100;
+      if (artwork) return artwork.replace('100x100bb', '600x600bb');
+    } catch {}
+  }
+
+  // 5. Deezer album art
+  if (artistName && albumTitle) {
+    try {
+      const res = await axios.get('https://api.deezer.com/search/album', {
+        params: { q: `artist:"${artistName}" album:"${albumTitle}"`, limit: 1 },
+        timeout: 5000,
+      });
+      const cover = res.data?.data?.[0]?.cover_xl || res.data?.data?.[0]?.cover_big;
+      if (cover) return cover;
+    } catch {}
+  }
+
+  // 6. Discogs album art
+  if (artistName && albumTitle) {
+    try {
+      const apiKey = getApiKey('discogs_api_key', 'DISCOGS_API_KEY');
+      if (apiKey) {
+        const res = await axios.get('https://api.discogs.com/database/search', {
+          params: { q: albumTitle, artist: artistName, type: 'release', per_page: 1 },
+          headers: { Authorization: `Discogs token=${apiKey}`, 'User-Agent': 'Singarr/1.0' },
+          timeout: 5000,
+        });
+        const img = res.data?.results?.[0]?.cover_image;
+        if (img && !img.includes('spacer.gif')) return img;
+      }
+    } catch {}
+  }
+
+  // 7. Plex thumb (if already in library)
   if (albumTitle) {
     try {
       const db = getDb();
@@ -324,18 +364,46 @@ router.get('/artist/:mbid', requireAuth, async (req, res) => {
       fanartArtistImages(mbid),
     ]);
 
-    // Build image sources with priority: fanart > lastfm
+    // Build image sources with priority: fanart > lastfm > deezer > discogs
     const lfmImages = Array.isArray(lfm?.image) ? lfm.image : [];
     const lfmLarge = lfmImages.find(i => i.size === 'extralarge')?.['#text']
                   || lfmImages.find(i => i.size === 'mega')?.['#text']
                   || null;
     const lfmThumb = lfmLarge && !lfmLarge.includes('2a96cbd8b46e442fc41c2b86b821562f') ? lfmLarge : null;
 
+    // Deezer artist image fallback
+    let deezerThumb = null;
+    if (!fanart?.artistthumb?.[0]?.url && !lfmThumb) {
+      try {
+        const dRes = await axios.get('https://api.deezer.com/search/artist', {
+          params: { q: artistName, limit: 1 }, timeout: 5000,
+        });
+        deezerThumb = dRes.data?.data?.[0]?.picture_xl || dRes.data?.data?.[0]?.picture_big || null;
+      } catch {}
+    }
+
+    // Discogs artist image fallback
+    let discogsThumb = null;
+    if (!fanart?.artistthumb?.[0]?.url && !lfmThumb && !deezerThumb) {
+      try {
+        const discogsKey = getApiKey('discogs_api_key', 'DISCOGS_API_KEY');
+        if (discogsKey) {
+          const dRes = await axios.get('https://api.discogs.com/database/search', {
+            params: { q: artistName, type: 'artist', per_page: 1 },
+            headers: { Authorization: `Discogs token=${discogsKey}`, 'User-Agent': 'Singarr/1.0' },
+            timeout: 5000,
+          });
+          const img = dRes.data?.results?.[0]?.cover_image;
+          if (img && !img.includes('spacer.gif')) discogsThumb = img;
+        }
+      } catch {}
+    }
+
     res.json({
       mbData,
       bio: lfm?.bio?.summary?.replace(/<[^>]*>/g, '').split(' Read more')[0] || null,
       images: {
-        thumb:      fanart?.artistthumb?.[0]?.url      || lfmThumb || null,
+        thumb:      fanart?.artistthumb?.[0]?.url      || lfmThumb || deezerThumb || discogsThumb || null,
         background: fanart?.artistbackground?.[0]?.url || null,
         logo:       fanart?.hdmusiclogo?.[0]?.url      || fanart?.musiclogo?.[0]?.url || null,
         banner:     fanart?.musicbanner?.[0]?.url      || null,

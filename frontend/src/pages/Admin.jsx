@@ -94,6 +94,9 @@ export default function Admin() {
       } else if (type === 'fanart') {
         const { data } = await api.post('/setup/test/fanart', { apiKey: settings.fanart_api_key })
         result = { ok: data.ok, message: data.ok ? 'Fanart.tv connected' : null, error: data.error }
+      } else if (type === 'discogs') {
+        const { data } = await api.post('/setup/test/discogs', { apiKey: settings.discogs_api_key })
+        result = { ok: data.ok, message: data.ok ? 'Discogs connected' : null, error: data.error }
       }
       setTests(t => ({ ...t, [type]: result }))
     } catch {
@@ -767,7 +770,7 @@ export default function Admin() {
             </div>
 
             {/* Fanart.tv */}
-            <div style={{ ...styles.apiSection, borderBottom: 'none', marginBottom: 0, paddingBottom: 0 }}>
+            <div style={styles.apiSection}>
               <div style={styles.apiSectionHeader}>
                 <IconDisc size={13} color="var(--accent)" />
                 <span style={styles.apiSectionTitle}>Fanart.tv</span>
@@ -790,6 +793,32 @@ export default function Admin() {
                 </div>
               </div>
               <TestPill result={tests.fanart} />
+            </div>
+
+            {/* Discogs */}
+            <div style={{ ...styles.apiSection, borderBottom: 'none', marginBottom: 0, paddingBottom: 0 }}>
+              <div style={styles.apiSectionHeader}>
+                <IconDisc size={13} color="var(--accent)" />
+                <span style={styles.apiSectionTitle}>Discogs</span>
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 4 }}>Album art &amp; artist images for obscure releases</span>
+                <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener" style={styles.getKeyLink}>Get free token →</a>
+              </div>
+              <div style={styles.apiRow} className="api-row-mobile">
+                <div style={{ flex: 1 }}>
+                  <label style={styles.fieldLabel}>User Token</label>
+                  <input type="password" placeholder="Personal access token" style={styles.fieldInput} autoComplete="off"
+                    value={settings.discogs_api_key || ''} onChange={e => setSettings(s => ({ ...s, discogs_api_key: e.target.value }))} />
+                </div>
+                <div style={styles.testCol}>
+                  <label style={{ ...styles.fieldLabel, opacity: 0 }}>Test</label>
+                  <button onClick={() => testConnection('discogs')} disabled={testing.discogs || !settings.discogs_api_key}
+                    style={{ ...styles.testConnBtn, opacity: !settings.discogs_api_key ? 0.4 : 1 }}>
+                    {testing.discogs ? <span style={styles.spinner} /> : <IconRefresh size={13} color="currentColor" />}
+                    Test
+                  </button>
+                </div>
+              </div>
+              <TestPill result={tests.discogs} />
             </div>
           </div>
 
