@@ -310,22 +310,6 @@ export default function Admin() {
             ))}
           </div>
 
-          <div style={styles.card}>
-            <div style={styles.cardHeader}>
-              <h3 style={styles.cardTitle}>Plex Library</h3>
-              <button onClick={syncPlex} disabled={syncing} style={{ ...styles.actionBtn, opacity: syncing ? 0.8 : 1, cursor: syncing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                {syncing
-                  ? <><span style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'currentColor', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block', flexShrink: 0 }} /> Syncing…</>
-                  : <><IconRefresh size={13} color="currentColor" /> Sync Now</>
-                }
-              </button>
-            </div>
-            <p style={styles.cardDesc}>
-              Singarr caches your Plex music library to prevent duplicate requests.
-              Auto-syncs hourly.
-            </p>
-          </div>
-
           {stats.recentRequests?.length > 0 && (
             <div style={styles.card}>
               <div style={styles.cardHeader}>
@@ -474,8 +458,23 @@ export default function Admin() {
             </div>
 
             <div style={{ marginTop: 14, padding: '10px 14px', background: 'rgba(79,156,249,0.07)', border: '1px solid rgba(79,156,249,0.18)', borderRadius: 9, fontSize: 12, color: 'var(--text-secondary)' }}>
-              ℹ After saving Plex credentials, trigger a <strong style={{ color: 'var(--text-primary)' }}>Plex Library Sync</strong> from the Overview tab to update your library cache. Last.fm and Fanart.tv keys are configured under the <strong style={{ color: 'var(--text-primary)' }}>Metadata Providers</strong> tab.
+              ℹ After saving Plex credentials, trigger a <strong style={{ color: 'var(--text-primary)' }}>Plex Library Sync</strong> below to update your library cache. Last.fm and Fanart.tv keys are configured under the <strong style={{ color: 'var(--text-primary)' }}>Metadata Providers</strong> tab.
             </div>
+          </div>
+
+          <div style={styles.card}>
+            <div style={styles.cardHeader}>
+              <h3 style={styles.cardTitle}>Plex Library Sync</h3>
+              <button onClick={syncPlex} disabled={syncing} style={{ ...styles.actionBtn, opacity: syncing ? 0.8 : 1, cursor: syncing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                {syncing
+                  ? <><span style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'currentColor', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block', flexShrink: 0 }} /> Syncing…</>
+                  : <><IconRefresh size={13} color="currentColor" /> Sync Now</>
+                }
+              </button>
+            </div>
+            <p style={styles.cardDesc}>
+              Singarr caches your Plex music library to prevent duplicate requests. Auto-syncs every minute.
+            </p>
           </div>
 
           <button onClick={saveSettings} disabled={saving || !isDirty} style={{ ...styles.saveBtn, opacity: (!isDirty || saving) ? 0.4 : 1, cursor: (!isDirty || saving) ? 'not-allowed' : 'pointer' }}>
