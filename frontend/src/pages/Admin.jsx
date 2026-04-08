@@ -42,10 +42,14 @@ export default function Admin() {
       const plexUrl = settings?.plex_url
       const plexToken = settings?.plex_token
       if (!plexUrl || !plexToken) return toast.error('Configure Plex URL and token in the Services tab first')
-      const { data } = await api.post('/setup/plex/users', { plexUrl, plexToken })
+      const [{ data }, usersRes] = await Promise.all([
+        api.post('/setup/plex/users', { plexUrl, plexToken }),
+        api.get('/admin/users'),
+      ])
+      const freshUsers = usersRes.data?.users || []
       const incoming = data.users || []
       if (!incoming.length) return toast('No Plex users found on your server', { icon: 'ℹ️' })
-      const existingPlexIds = new Set(users.filter(u => u.plex_id).map(u => String(u.plex_id)))
+      const existingPlexIds = new Set(freshUsers.filter(u => u.plex_id).map(u => String(u.plex_id)))
       const newUsers = incoming.filter(u => !existingPlexIds.has(String(u.plexId)))
       if (!newUsers.length) return toast('All your Plex users have already been imported', { icon: 'ℹ️' })
       setPlexImportUsers(newUsers)

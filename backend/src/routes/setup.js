@@ -235,7 +235,12 @@ router.post('/test/discogs', async (req, res) => {
 
 // ── Step 4: Fetch Plex users ──────────────────────────────
 router.post('/plex/users', async (req, res) => {
-  const { plexToken, plexUrl } = req.body;
+  const db = getDb();
+  const MASK = '••••••••';
+  const plexUrl = req.body.plexUrl;
+  const plexToken = req.body.plexToken === MASK
+    ? db.prepare("SELECT value FROM settings WHERE key = 'plex_token'").get()?.value
+    : req.body.plexToken;
   if (!plexToken) return res.status(400).json({ error: 'Plex token required' });
   try {
     const headers = {
@@ -243,18 +248,26 @@ router.post('/plex/users', async (req, res) => {
       'X-Plex-Client-Identifier': 'singarr',
       'X-Plex-Product': 'Singarr',
       'Accept': 'application/json',
+      'Cache-Control': 'no-cache',
     };
 
-    const [friendsRes, homeRes] = await Promise.allSettled([
+    // Hit all three endpoints — v2 friends, v2 home users, and v1 friends (more reliable)
+    const [friendsV2Res, homeRes, friendsV1Res] = await Promise.allSettled([
       axios.get('https://plex.tv/api/v2/friends', { headers, timeout: 8000 }),
       axios.get('https://plex.tv/api/v2/home/users', { headers, timeout: 8000 }),
+      axios.get('https://plex.tv/pms/friends/all', {
+        params: { 'X-Plex-Token': plexToken },
+        headers: { Accept: 'application/xml', 'Cache-Control': 'no-cache' },
+        timeout: 8000,
+      }),
     ]);
 
     const users = [];
     const seen = new Set();
 
-    if (friendsRes.status === 'fulfilled') {
-      const friends = Array.isArray(friendsRes.value.data) ? friendsRes.value.data : [];
+    // v2 friends
+    if (friendsV2Res.status === 'fulfilled') {
+      const friends = Array.isArray(friendsV2Res.value.data) ? friendsV2Res.value.data : [];
       for (const u of friends) {
         const id = String(u.id || u.uuid);
         if (!seen.has(id)) {
@@ -264,6 +277,7 @@ router.post('/plex/users', async (req, res) => {
       }
     }
 
+    // v2 home users
     if (homeRes.status === 'fulfilled') {
       const raw = homeRes.value.data;
       const homeUsers = Array.isArray(raw) ? raw : (raw?.users || []);
@@ -272,6 +286,19 @@ router.post('/plex/users', async (req, res) => {
         if (!seen.has(id)) {
           seen.add(id);
           users.push({ plexId: id, username: u.username || u.title, email: u.email || '', avatar: u.thumb || u.avatar || null, source: 'home' });
+        }
+      }
+    }
+
+    // v1 XML friends — catches users the v2 API misses
+    if (friendsV1Res.status === 'fulfilled') {
+      const xml = friendsV1Res.value.data || '';
+      const matches = [...xml.matchAll(/User\s+id="(\d+)"[^>]*username="([^"]*)"[^>]*email="([^"]*)"[^>]*thumb="([^"]*)"/g)];
+      for (const m of matches) {
+        const id = m[1];
+        if (!seen.has(id)) {
+          seen.add(id);
+          users.push({ plexId: id, username: m[2], email: m[3], avatar: m[4] || null, source: 'friend' });
         }
       }
     }
