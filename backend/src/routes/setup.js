@@ -249,17 +249,12 @@ router.post('/plex/users', async (req, res) => {
       'X-Plex-Product': 'Singarr',
       'Accept': 'application/json',
       'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
     };
 
-    // Hit all three endpoints — v2 friends, v2 home users, and v1 friends (more reliable)
-    const [friendsV2Res, homeRes, friendsV1Res] = await Promise.allSettled([
-      axios.get('https://plex.tv/api/v2/friends', { headers, timeout: 8000 }),
-      axios.get('https://plex.tv/api/v2/home/users', { headers, timeout: 8000 }),
-      axios.get('https://plex.tv/pms/friends/all', {
-        params: { 'X-Plex-Token': plexToken },
-        headers: { Accept: 'application/xml', 'Cache-Control': 'no-cache' },
-        timeout: 8000,
-      }),
+    const [friendsV2Res, homeRes] = await Promise.allSettled([
+      axios.get('https://plex.tv/api/v2/friends', { headers, timeout: 10000 }),
+      axios.get('https://plex.tv/api/v2/home/users', { headers, timeout: 10000 }),
     ]);
 
     const users = [];
@@ -268,6 +263,7 @@ router.post('/plex/users', async (req, res) => {
     // v2 friends
     if (friendsV2Res.status === 'fulfilled') {
       const friends = Array.isArray(friendsV2Res.value.data) ? friendsV2Res.value.data : [];
+      console.log(`[Plex] v2 friends returned ${friends.length} users:`, friends.map(u => u.username).join(', '));
       for (const u of friends) {
         const id = String(u.id || u.uuid);
         if (!seen.has(id)) {
@@ -275,12 +271,15 @@ router.post('/plex/users', async (req, res) => {
           users.push({ plexId: id, username: u.username || u.title, email: u.email || '', avatar: u.thumb || u.avatar || null, source: 'friend' });
         }
       }
+    } else {
+      console.log(`[Plex] v2 friends failed:`, friendsV2Res.reason?.message);
     }
 
     // v2 home users
     if (homeRes.status === 'fulfilled') {
       const raw = homeRes.value.data;
       const homeUsers = Array.isArray(raw) ? raw : (raw?.users || []);
+      console.log(`[Plex] v2 home users returned ${homeUsers.length} users:`, homeUsers.map(u => u.username || u.title).join(', '));
       for (const u of homeUsers) {
         const id = String(u.id || u.uuid);
         if (!seen.has(id)) {
@@ -288,21 +287,11 @@ router.post('/plex/users', async (req, res) => {
           users.push({ plexId: id, username: u.username || u.title, email: u.email || '', avatar: u.thumb || u.avatar || null, source: 'home' });
         }
       }
+    } else {
+      console.log(`[Plex] v2 home users failed:`, homeRes.reason?.message);
     }
 
-    // v1 XML friends — catches users the v2 API misses
-    if (friendsV1Res.status === 'fulfilled') {
-      const xml = friendsV1Res.value.data || '';
-      const matches = [...xml.matchAll(/User\s+id="(\d+)"[^>]*username="([^"]*)"[^>]*email="([^"]*)"[^>]*thumb="([^"]*)"/g)];
-      for (const m of matches) {
-        const id = m[1];
-        if (!seen.has(id)) {
-          seen.add(id);
-          users.push({ plexId: id, username: m[2], email: m[3], avatar: m[4] || null, source: 'friend' });
-        }
-      }
-    }
-
+    console.log(`[Plex] Total users for import: ${users.length}`);
     res.json({ users });
   } catch (e) {
     res.json({ users: [], error: e.message });
