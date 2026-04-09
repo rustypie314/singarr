@@ -242,6 +242,10 @@ router.post('/plex/users', async (req, res) => {
     ? db.prepare("SELECT value FROM settings WHERE key = 'plex_token'").get()?.value
     : req.body.plexToken;
   if (!plexToken) return res.status(400).json({ error: 'Plex token required' });
+
+  // Get machineId for shared_servers endpoint
+  const machineId = db.prepare("SELECT value FROM settings WHERE key = 'plex_machine_id'").get()?.value;
+
   try {
     const headers = {
       'X-Plex-Token': plexToken,
@@ -252,37 +256,57 @@ router.post('/plex/users', async (req, res) => {
       'Pragma': 'no-cache',
     };
 
-    const [friendsV2Res, homeRes] = await Promise.allSettled([
-      axios.get('https://plex.tv/api/v2/friends', { headers, timeout: 10000 }),
+    // Use older /api/users endpoint (more reliable than v2) + home users + server shared users
+    const requests = [
+      axios.get('https://plex.tv/api/users', {
+        params: { 'X-Plex-Token': plexToken },
+        headers: { Accept: 'application/xml', 'Cache-Control': 'no-cache' },
+        timeout: 10000,
+      }),
       axios.get('https://plex.tv/api/v2/home/users', { headers, timeout: 10000 }),
-    ]);
+    ];
+
+    // If we have a machineId, also fetch users shared specifically to this server
+    if (machineId) {
+      requests.push(
+        axios.get(`https://plex.tv/api/servers/${machineId}/shared_servers`, {
+          params: { 'X-Plex-Token': plexToken },
+          headers: { Accept: 'application/xml', 'Cache-Control': 'no-cache' },
+          timeout: 10000,
+        })
+      );
+    }
+
+    const results = await Promise.allSettled(requests);
+    const [usersXmlRes, homeRes, sharedRes] = results;
 
     const users = [];
     const seen = new Set();
 
-    // v2 friends
-    if (friendsV2Res.status === 'fulfilled') {
-      const friends = Array.isArray(friendsV2Res.value.data) ? friendsV2Res.value.data : [];
-      console.log(`[Plex] v2 friends returned ${friends.length} users:`, friends.map(u => u.username).join(', '));
-      for (const u of friends) {
-        const id = String(u.id || u.uuid);
-        if (!seen.has(id)) {
+    // Old /api/users XML endpoint — returns all friends
+    if (usersXmlRes.status === 'fulfilled') {
+      const xml = usersXmlRes.value.data || '';
+      const matches = [...xml.matchAll(/User\s[^>]*id="(\d+)"[^>]*username="([^"]*)"[^>]*email="([^"]*)"[^>]*(?:thumb|avatar)="([^"]*)"/g)];
+      console.log(`[Plex] /api/users returned ${matches.length} users`);
+      for (const m of matches) {
+        const id = m[1];
+        if (!seen.has(id) && m[2]) { // skip blank usernames
           seen.add(id);
-          users.push({ plexId: id, username: u.username || u.title, email: u.email || '', avatar: u.thumb || u.avatar || null, source: 'friend' });
+          users.push({ plexId: id, username: m[2], email: m[3], avatar: m[4] || null, source: 'friend' });
         }
       }
     } else {
-      console.log(`[Plex] v2 friends failed:`, friendsV2Res.reason?.message);
+      console.log(`[Plex] /api/users failed:`, usersXmlRes.reason?.message);
     }
 
-    // v2 home users
+    // v2 home users (managed accounts)
     if (homeRes.status === 'fulfilled') {
       const raw = homeRes.value.data;
       const homeUsers = Array.isArray(raw) ? raw : (raw?.users || []);
-      console.log(`[Plex] v2 home users returned ${homeUsers.length} users:`, homeUsers.map(u => u.username || u.title).join(', '));
+      console.log(`[Plex] v2 home users returned ${homeUsers.length} users`);
       for (const u of homeUsers) {
         const id = String(u.id || u.uuid);
-        if (!seen.has(id)) {
+        if (!seen.has(id) && (u.username || u.title)) {
           seen.add(id);
           users.push({ plexId: id, username: u.username || u.title, email: u.email || '', avatar: u.thumb || u.avatar || null, source: 'home' });
         }
@@ -291,7 +315,21 @@ router.post('/plex/users', async (req, res) => {
       console.log(`[Plex] v2 home users failed:`, homeRes.reason?.message);
     }
 
-    console.log(`[Plex] Total users for import: ${users.length}`);
+    // Shared servers endpoint — users with specific access to this server
+    if (sharedRes?.status === 'fulfilled') {
+      const xml = sharedRes.value.data || '';
+      const matches = [...xml.matchAll(/SharedServer\s[^>]*userID="(\d+)"[^>]*username="([^"]*)"[^>]*email="([^"]*)"/g)];
+      console.log(`[Plex] shared_servers returned ${matches.length} users`);
+      for (const m of matches) {
+        const id = m[1];
+        if (!seen.has(id) && m[2]) {
+          seen.add(id);
+          users.push({ plexId: id, username: m[2], email: m[3], avatar: null, source: 'friend' });
+        }
+      }
+    }
+
+    console.log(`[Plex] Total users for import: ${users.length} — ${users.map(u => u.username).join(', ')}`);
     res.json({ users });
   } catch (e) {
     res.json({ users: [], error: e.message });
