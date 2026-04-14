@@ -57,7 +57,10 @@ function TestResult({ result }) {
   )
 }
 
-function ApiField({ label, hint, type = 'text', value, onChange, placeholder, onTest, testing, testResult, optional = true }) {
+function ApiField({ label, hint, type = 'text', value, onChange, placeholder, onTest, testing, testResult, optional = true, urlField = false }) {
+  const protocol = value?.startsWith('https://') ? 'https://' : 'http://'
+  const host = value ? value.replace(/^https?:\/\//, '') : ''
+
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -66,12 +69,30 @@ function ApiField({ label, hint, type = 'text', value, onChange, placeholder, on
       </div>
       {hint && <div style={s.hint}>{hint}</div>}
       <div style={{ display: 'flex', gap: 8 }}>
-        <input
-          type={type} value={value}
-          onChange={e => { onChange(e.target.value); }}
-          placeholder={placeholder} style={s.input}
-          autoComplete="off" spellCheck={false}
-        />
+        {urlField ? (
+          <div style={{ ...s.input, display: 'flex', alignItems: 'center', padding: 0, overflow: 'hidden', flex: 1 }}>
+            <select
+              value={protocol}
+              onChange={e => onChange(e.target.value + host)}
+              style={{ padding: '0 22px 0 10px', alignSelf: 'stretch', background: 'rgba(255,255,255,0.05)', border: 'none', borderRight: '1px solid rgba(255,255,255,0.1)', color: '#9898a8', fontSize: 13, fontFamily: 'monospace', cursor: 'pointer', outline: 'none', appearance: 'none', WebkitAppearance: 'none', flexShrink: 0, backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2355555f' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 4px center' }}>
+              <option value="http://">http://</option>
+              <option value="https://">https://</option>
+            </select>
+            <input
+              type="text" value={host}
+              onChange={e => onChange(protocol + e.target.value)}
+              placeholder={placeholder} autoComplete="off" spellCheck={false}
+              style={{ flex: 1, padding: '10px 12px', background: 'transparent', border: 'none', outline: 'none', color: '#f0f0f2', fontSize: 13, fontFamily: 'inherit', minWidth: 0 }}
+            />
+          </div>
+        ) : (
+          <input
+            type={type} value={value}
+            onChange={e => { onChange(e.target.value); }}
+            placeholder={placeholder} style={s.input}
+            autoComplete="off" spellCheck={false}
+          />
+        )}
         {onTest && (
           <button
             onClick={onTest}
@@ -385,8 +406,9 @@ export default function SetupWizard({ onComplete }) {
                       <span style={s.serviceDesc}>Handles music acquisition</span>
                     </div>
                     <ApiField
-                      label="Lidarr URL" placeholder="http://192.168.1.100:8686"
-                      value={lidarrUrl} onChange={v => { setLidarrUrl(v); setLidarrTest(null) }}
+                      urlField={true}
+                      label="Lidarr URL" placeholder="192.168.1.100:8686"
+                      value={lidarrUrl || 'http://'} onChange={v => { setLidarrUrl(v); setLidarrTest(null) }}
                       hint="Settings → General → Host in Lidarr"
                     />
                     <ApiField
@@ -406,8 +428,9 @@ export default function SetupWizard({ onComplete }) {
                       <span style={s.serviceDesc}>Library awareness &amp; user import</span>
                     </div>
                     <ApiField
-                      label="Plex Server URL" placeholder="http://192.168.1.100:32400"
-                      value={plexUrl} onChange={v => { setPlexUrl(v); setPlexTest(null) }}
+                      urlField={true}
+                      label="Plex Server URL" placeholder="192.168.1.100:32400"
+                      value={plexUrl || 'http://'} onChange={v => { setPlexUrl(v); setPlexTest(null) }}
                     />
                     <ApiField
                       label="Plex Token" placeholder="Your Plex token"
