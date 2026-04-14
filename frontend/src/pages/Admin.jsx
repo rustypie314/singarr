@@ -389,8 +389,8 @@ export default function Admin() {
               <div style={styles.apiRow} className="api-row-mobile">
                 <div style={{ flex: 1 }}>
                   <label style={styles.fieldLabel}>URL</label>
-                  <UrlInput placeholder="192.168.1.60:8686" style={styles.fieldInput}
-                    value={settings.lidarr_url || 'http://'}
+                  <UrlInput placeholder="your-lidarr-server:8686" style={styles.fieldInput}
+                    value={settings.lidarr_url || ''}
                     onChange={v => setSettings(s => ({ ...s, lidarr_url: v }))} />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -419,8 +419,8 @@ export default function Admin() {
               <div style={styles.apiRow} className="api-row-mobile">
                 <div style={{ flex: 1 }}>
                   <label style={styles.fieldLabel}>Server URL</label>
-                  <UrlInput placeholder="192.168.1.60:32400" style={styles.fieldInput}
-                    value={settings.plex_url || 'http://'}
+                  <UrlInput placeholder="your-plex-server:32400" style={styles.fieldInput}
+                    value={settings.plex_url || ''}
                     onChange={v => setSettings(s => ({ ...s, plex_url: v }))} />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -1297,33 +1297,15 @@ function UrlInput({ value, onChange, placeholder, style }) {
   const protocol = value?.startsWith('https://') ? 'https://' : 'http://'
   const host = value ? value.replace(/^https?:\/\//, '') : ''
 
-  function handleProtocol(e) {
-    onChange(e.target.value + host)
-  }
-  function handleHost(e) {
-    onChange(protocol + e.target.value)
-  }
-
-  const selectStyle = {
-    padding: '0 24px 0 10px', height: '100%',
-    background: 'rgba(255,255,255,0.05)',
-    border: 'none', borderRight: '1px solid var(--border)',
-    color: 'var(--text-secondary)', fontSize: 13,
-    fontFamily: 'var(--font-mono)', cursor: 'pointer',
-    outline: 'none', appearance: 'none', WebkitAppearance: 'none',
-    flexShrink: 0, alignSelf: 'stretch',
-    backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2355555f' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")",
-    backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center',
-  }
-
   return (
-    <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-surface)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', ...style }}>
-      <select value={protocol} onChange={handleProtocol} style={selectStyle}>
+    <div style={{ display: 'flex', alignItems: 'stretch', background: 'var(--bg-surface)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', height: 38 }}>
+      <select value={protocol} onChange={e => onChange(e.target.value + host)}
+        style={{ padding: '0 22px 0 10px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRight: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 13, fontFamily: 'var(--font-mono)', cursor: 'pointer', outline: 'none', appearance: 'none', WebkitAppearance: 'none', flexShrink: 0, backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2355555f' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 5px center' }}>
         <option value="http://">http://</option>
         <option value="https://">https://</option>
       </select>
-      <input type="text" value={host} onChange={handleHost} placeholder={placeholder}
-        style={{ flex: 1, padding: '9px 12px', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'var(--font-sans)', minWidth: 0 }} />
+      <input type="text" value={host} onChange={e => onChange(protocol + e.target.value)} placeholder={placeholder}
+        style={{ flex: 1, padding: '0 12px', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'var(--font-sans)', minWidth: 0 }} />
     </div>
   )
 }

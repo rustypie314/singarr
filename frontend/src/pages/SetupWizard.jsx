@@ -407,8 +407,8 @@ export default function SetupWizard({ onComplete }) {
                     </div>
                     <ApiField
                       urlField={true}
-                      label="Lidarr URL" placeholder="192.168.1.100:8686"
-                      value={lidarrUrl || 'http://'} onChange={v => { setLidarrUrl(v); setLidarrTest(null) }}
+                      label="Lidarr URL" placeholder="your-lidarr-server:8686"
+                      value={lidarrUrl || ''} onChange={v => { setLidarrUrl(v); setLidarrTest(null) }}
                       hint="Settings → General → Host in Lidarr"
                     />
                     <ApiField
@@ -429,8 +429,8 @@ export default function SetupWizard({ onComplete }) {
                     </div>
                     <ApiField
                       urlField={true}
-                      label="Plex Server URL" placeholder="192.168.1.100:32400"
-                      value={plexUrl || 'http://'} onChange={v => { setPlexUrl(v); setPlexTest(null) }}
+                      label="Plex Server URL" placeholder="your-plex-server:32400"
+                      value={plexUrl || ''} onChange={v => { setPlexUrl(v); setPlexTest(null) }}
                     />
                     <ApiField
                       label="Plex Token" placeholder="Your Plex token"
